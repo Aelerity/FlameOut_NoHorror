@@ -8,6 +8,7 @@ import arc.util.*;
 import arc.util.pooling.*;
 import flame.*;
 import flame.effects.*;
+import flame.entities.*;
 import flame.unit.*;
 import mindustry.*;
 import mindustry.audio.*;
@@ -139,30 +140,19 @@ public class EmpathyDamage{
 
             excludeReAdd.addAll(excludeSeq);
 
-            for(Entityc e : Groups.all){
-                for(EmpathyHolder u : units){
-                    if(u.unit == e) u.added = true;
-                }
-                excludeReAdd.remove(u -> u == e);
-                if(damageMap.containsKey(e.id())){
-                    AbsoluteDamage<?> ad = damageMap.get(e.id());
-                    if(ad.dead){
-                        ad.addCount++;
-                        ad.maximizeAdditions();
-                        ad.dead = false;
-                        if(ad.addCount >= 4) ad.purgatory = true;
-                    }
-                }
-                addedSet.add(e.id());
-            }
+            // v8 splits native entities across their typed groups. A valid unit must not
+            // be mistaken for a removed entity, nor be inserted into Groups.all and tick twice.
+            for(Entityc entity : Groups.all) scanEntity(entity);
+            for(Unit entity : Groups.unit) scanEntity(entity);
+            for(Bullet entity : Groups.bullet) scanEntity(entity);
+            for(Building entity : Groups.build) scanEntity(entity);
             excludeReAdd.removeAll(queueExcludeRemoval);
 
             if(!excludeReAdd.isEmpty()){
                 for(Unit u : excludeReAdd){
                     if(u.isAdded()){
-                        Groups.all.add(u);
-                        Groups.unit.add(u);
-                        Groups.draw.add(u);
+                        if(!Groups.unit.contains(entity -> entity == u)) Groups.unit.add(u);
+                        if(!Groups.draw.contains(entity -> entity == u)) Groups.draw.add(u);
                     }else{
                         u.add();
                     }
@@ -189,7 +179,7 @@ public class EmpathyDamage{
             int dsize = Groups.draw.size();
             for(int i = (staggerIdx % 3); i < dsize; i += 3){
                 Drawc d = Groups.draw.index(i);
-                if(!addedSet.contains(d.id())){
+                if(d instanceof BasicEntity && !addedSet.contains(d.id())){
                     Groups.all.add(d);
                 }
             }
@@ -234,6 +224,19 @@ public class EmpathyDamage{
                 excludeTime.remove(u.id);
             }
             queueExcludeRemoval.clear();
+        }
+    }
+
+    private static void scanEntity(Entityc entity){
+        if(!addedSet.add(entity.id())) return;
+        for(EmpathyHolder holder : units) if(holder.unit == entity) holder.added = true;
+        excludeReAdd.remove(unit -> unit == entity);
+        AbsoluteDamage<?> damage = damageMap.get(entity.id());
+        if(damage != null && damage.dead){
+            damage.addCount++;
+            damage.maximizeAdditions();
+            damage.dead = false;
+            if(damage.addCount >= 4) damage.purgatory = true;
         }
     }
 
@@ -581,7 +584,7 @@ public class EmpathyDamage{
             if(health <= 0f && !dead){
                 dead = true;
                 if(lastRunnable != null){
-                    lastRunnable.run();
+                    if(!Vars.headless) lastRunnable.run();
                     lastRunnable = null;
                 }
                 removeEntity();
@@ -608,20 +611,20 @@ public class EmpathyDamage{
             int ac = getAddCount();
             boolean setNaN = ac >= 3;
             if(ac <= 0){
-                Entityc lastEntity = Groups.all.index(Groups.all.size() - 1);
                 int idx = Groups.all.size();
-                boolean wasAdded = entity.isAdded();
+                Entityc lastEntity = idx > 0 ? Groups.all.index(idx - 1) : null;
+                boolean wasInAll = Groups.all.contains(other -> other == entity);
                 entity.remove();
                 if((entity instanceof Building bl)){
                     Events.fire(new BlockDestroyEvent(bl.tile));
                     if(bl.tile != Vars.emptyTile) bl.tile.remove();
                     //idx = (Groups.all.size());
                 }
-                if(!entity.isAdded() && wasAdded){
+                if(wasInAll && !Groups.all.contains(other -> other == entity)){
                     idx--;
                 }
-                Entityc newEntity = Groups.all.index(Groups.all.size() - 1);
                 int newCount = Groups.all.size();
+                Entityc newEntity = newCount > 0 ? Groups.all.index(newCount - 1) : null;
 
                 //TODO fix
                 if(newCount > idx && lastEntity != newEntity){

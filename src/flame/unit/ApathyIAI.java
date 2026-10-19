@@ -92,6 +92,49 @@ public class ApathyIAI implements UnitController{
         soundPlaying = new boolean[2];
     }
 
+    void stopManual(){
+        if(laser != null){ laser.time = laser.lifetime; laser.remove(); laser = null; }
+        for(SoundLoop sound : sounds) sound.stop();
+    }
+
+    void beginManualForm(int form){
+        stopManual();
+        currentTransformation = form;
+        unchanged = false;
+        transformationTime = Float.MAX_VALUE;
+        data1 = data2 = 0f;
+    }
+
+    void initManualForm(){
+        switch(currentTransformation){
+            case 1 -> initSmallLaser();
+            case 2 -> initAoE();
+            case 3 -> initSweep();
+            case 4 -> initLargeLaser();
+        }
+    }
+
+    void updateManualForm(){
+        stressScaled = unit.getStressScaled();
+        strongest = PlayerTargets.enemy(unit);
+        // No automatic form selection or AI movement may replace the Player controller.
+        switch(currentTransformation){
+            case 1 -> updateSmallLaser();
+            case 2 -> {
+                data1 -= Time.delta;
+                if(data1 <= 0f){
+                    float angle = PlayerTargets.angle(unit);
+                    Vec2 origin = Tmp.v1.trns(angle, 50f).add(unit);
+                    FlameBullets.aoe.create(unit, origin.x, origin.y, angle);
+                    FlameSounds.aoeShoot.at(origin.x, origin.y);
+                    data1 = 90f / (1f + stressScaled / 1.5f);
+                }
+            }
+            case 3 -> updateSweep();
+            case 4 -> updateLargeLaser();
+        }
+    }
+
     @Override
     public void updateUnit(){
         if(unit.dead){
@@ -193,8 +236,8 @@ public class ApathyIAI implements UnitController{
         data2 = 0f;
     }
     void updateLargeLaser(){
-        if(strongest != null){
-            float ato = unit.angleTo(strongest);
+        if(strongest != null || unit.isPlayer()){
+            float ato = unit.isPlayer() ? PlayerTargets.angle(unit) : unit.angleTo(strongest);
             //float adst = laser == null ? Math.max(Angles.angleDist(unit.rotation, ato) / 5f, 3f) : 0.05f;
             float adst = laser == null ? Math.max(Angles.angleDist(unit.rotation, ato) / 5f, 3f) : (laser.time < 140f ? 0.05f : 0.005f);
 
@@ -260,8 +303,8 @@ public class ApathyIAI implements UnitController{
         data2 = 0f;
     }
     void updateSmallLaser(){
-        if(strongest != null){
-            float ato = unit.angleTo(strongest);
+        if(strongest != null || unit.isPlayer()){
+            float ato = unit.isPlayer() ? PlayerTargets.angle(unit) : unit.angleTo(strongest);
             float adst = laser == null ? Math.max(Angles.angleDist(unit.rotation, ato) / 5f, 3f) : 0.25f;
             unit.rotation = Angles.moveToward(unit.rotation, ato, adst * Time.delta * (1 + stressScaled / 3f));
             if(Angles.within(unit.rotation, ato, 0.1f) && data2 <= 0f && laser == null){
@@ -280,7 +323,7 @@ public class ApathyIAI implements UnitController{
                 laser.rotation(unit.rotation);
                 laser.damage = laser.type.damage * (1 + stressScaled / 4f);
 
-                if(Units.invalidateTarget(strongest, unit.team, unit.x, unit.y) || data1 >= 10f){
+                if(unit.isPlayer() || Units.invalidateTarget(strongest, unit.team, unit.x, unit.y) || data1 >= 10f){
                     laser.time = Math.min(laser.time, ApathySmallLaserBulletType.inEnd);
                     transformationSpeed = 0.5f;
                 }
@@ -321,7 +364,7 @@ public class ApathyIAI implements UnitController{
 
     void initSweep(){
         if(laser != null && unchanged) return;
-        data1 = Mathf.random(360f);
+        data1 = unit.isPlayer() ? PlayerTargets.angle(unit) : Mathf.random(360f);
         //data1 = unit.angleTo(strongest);
         data2 = 0f;
         

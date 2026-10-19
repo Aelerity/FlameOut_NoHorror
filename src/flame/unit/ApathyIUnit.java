@@ -18,9 +18,53 @@ import mindustry.graphics.*;
 import mindustry.type.*;
 import mindustry.entities.units.*;
 
-public class ApathyIUnit extends UnitEntity{
+public class ApathyIUnit extends UnitEntity implements PlayerAbilityUnit{
     ShiftHandler current, last;
-    private ApathyIAI lastAI;
+    private ApathyIAI lastAI, playerAI;
+    private int playerAbility;
+    private boolean playerFiring, playerFormInit;
+    private String playerStatus = "Primary fire: laser. Select a form or sentry command.";
+    private static final String[] playerAbilities = {"Primary laser", "Prism / shield form", "Weak laser form", "Area burst form", "Sweep laser form", "Strong laser form", "Deploy sentries", "Recall sentries to repair"};
+
+    @Override public String[] playerAbilityNames(){ return playerAbilities.clone(); }
+    @Override public int selectedPlayerAbility(){ return playerAbility; }
+    @Override public void selectPlayerAbility(int index){
+        if(index >= 0 && index < playerAbilities.length) playerAbility = index;
+    }
+    @Override public String playerAbilityStatus(){ return playerStatus; }
+    @Override public boolean nativePlayerWeapon(){ return !playerFiring; }
+
+    @Override public boolean usePlayerAbility(){
+        if(!isPlayer()) return false;
+        if(playerAbility == 6){
+            if(createSentries || sentries.size >= 16){ playerStatus = "Sentries already deployed."; return false; }
+            createSentries = true;
+            sentryPosition = sentries.size;
+            sentrySpawnDelay = sentrySpawnDelay2 = 0f;
+        }else if(playerAbility == 7){
+            if(sentries.isEmpty()){ playerStatus = "Deploy sentries first."; return false; }
+            createSentries = false;
+            repositionSentries(true);
+        }else{
+            cancelPlayerAbility();
+            if(playerAbility > 0){
+                if(playerAI == null){ playerAI = new ApathyIAI(); playerAI.unit(this); }
+                playerAI.beginManualForm(playerAbility - 1);
+                switchShift(((ApathyUnitType)type).handlers.get(playerAbility - 1));
+                playerFormInit = true;
+                playerFiring = playerAbility > 1;
+            }
+        }
+        playerStatus = playerAbilities[playerAbility];
+        return true;
+    }
+
+    @Override public void cancelPlayerAbility(){
+        if(playerAI != null) playerAI.stopManual();
+        playerFiring = playerFormInit = false;
+        playerStatus = "Ability stopped. Primary fire: laser.";
+    }
+
     float shiftProgress = 0f;
     boolean shifting = false;
 
@@ -53,6 +97,7 @@ public class ApathyIUnit extends UnitEntity{
             if(ai.sounds != null) for(SoundLoop sound : ai.sounds) sound.stop();
             if(ai.laser != null) ai.laser.time = ai.laser.lifetime;
         }
+        if(controller instanceof Player && next != controller) cancelPlayerAbility();
         super.controller(next);
         if(next instanceof ApathyIAI ai) lastAI = ai;
     }
@@ -157,6 +202,13 @@ public class ApathyIUnit extends UnitEntity{
             current.update(this);
             current.updateShift(this, 1f, false);
         }
+        if(isPlayer() && playerAI != null){
+            if(playerFormInit && !shifting){
+                playerAI.initManualForm();
+                playerFormInit = false;
+            }
+            if(playerFiring && !shifting) playerAI.updateManualForm();
+        }
         if(dead){
             Call.unitDestroy(id);
             return;
@@ -249,7 +301,7 @@ public class ApathyIUnit extends UnitEntity{
         
         boolean allHealing = false;
         for(ApathySentryUnit s : sentries){
-            s.target = controller instanceof ApathyIAI ai ? ai.strongest : null;
+            s.target = isPlayer() ? PlayerTargets.enemy(this) : controller instanceof ApathyIAI ai ? ai.strongest : null;
             allHealing |= s.healDelay > 0;
         }
 
@@ -372,6 +424,7 @@ public class ApathyIUnit extends UnitEntity{
 
     @Override
     public void remove(){
+        cancelPlayerAbility();
         super.remove();
         if(lastAI != null && lastAI.sounds != null){
             for(SoundLoop sl : lastAI.sounds){

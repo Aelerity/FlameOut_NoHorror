@@ -310,7 +310,7 @@ public class CountDownAttack extends AttackAI{
             Lines.stroke(width * 2f);
             Lines.line(v.x, v.y, end.x, end.y, false);
         });
-        Vars.renderer.shake(80f, 90f);
+        if(!Vars.headless) Vars.renderer.shake(80f, 90f);
     }
     @SuppressWarnings("all")
     static void drawBigLaser(float x, float y, float rotation, float fade){

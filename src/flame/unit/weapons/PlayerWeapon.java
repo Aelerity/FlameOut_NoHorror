@@ -20,7 +20,7 @@ public class PlayerWeapon extends Weapon{
     }
 
     protected boolean enabled(Unit unit){
-        return unit.isPlayer();
+        return unit.isPlayer() && (!(unit instanceof flame.unit.PlayerAbilityUnit abilities) || abilities.nativePlayerWeapon());
     }
 
     @Override

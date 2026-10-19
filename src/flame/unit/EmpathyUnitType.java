@@ -44,6 +44,7 @@ public class EmpathyUnitType extends UnitType{
     @Override
     public void init(){
         super.init();
+        if(Vars.headless) EmpathyRegions.loadHeadless();
         for(StatusEffect s : Vars.content.statusEffects()){
             immunities.add(s);
         }

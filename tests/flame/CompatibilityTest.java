@@ -41,13 +41,18 @@ public class CompatibilityTest{
             public void init(){
                 try{
                     initialize();
-                    verifyUnits();
-                    verifyFactory();
-                    verifyNoEncounter();
-                    Log.info("PASS: @ compatibility checks on Mindustry @", checks, Version.buildString());
+                    Core.app.post(() -> {
+                        try{
+                            verifyUnits();
+                            verifyFactory();
+                            verifyNoEncounter();
+                            verifyPlayerAbilities();
+                            Log.info("PASS: @ compatibility checks on Mindustry @", checks, Version.buildString());
+                        }catch(Throwable error){ failure.set(error); }
+                        finally{ done.countDown(); }
+                    });
                 }catch(Throwable error){
                     failure.set(error);
-                }finally{
                     done.countDown();
                 }
             }
@@ -100,6 +105,7 @@ public class CompatibilityTest{
         require(!mods.hasContentErrors(), "mod content errors");
         require(mods.list().contains(m -> m.name.equals("flameout") && m.enabled()), "mod was not enabled");
         require(Version.build == 160 && Version.revision == 7, "wrong game version");
+        require(mods.list().find(m -> m.name.equals("flameout")).meta.minGameVersion.equals("160.7"), "packaged mod still has old compatibility metadata");
         invoke("flame.unit.empathy.EmpathyDamage", "initContent");
         Time.setDeltaProvider(() -> 1f);
         Time.delta = 1f;
@@ -205,6 +211,11 @@ public class CompatibilityTest{
         require(!Groups.unit.contains(u -> u.type == unitType("empathy")), "unsolicited Empathy spawn");
         require(!unitType("empathy").hidden, "Empathy became hidden");
         require(Core.settings.getInt("flame-special") == 5, "legacy horror state was modified");
+    }
+
+    private static void verifyPlayerAbilities(){
+        try{ PlayerAbilityTest.run(modLoader); }
+        catch(Exception error){ throw new RuntimeException(error); }
     }
 
     private static UnitType unitType(String name){

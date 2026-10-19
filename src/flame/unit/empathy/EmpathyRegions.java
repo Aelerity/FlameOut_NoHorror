@@ -9,6 +9,20 @@ public class EmpathyRegions{
     static TextureRegion[] countDown = new TextureRegion[6], endAPI = new TextureRegion[3];
     static SegmentedRegion swordSeg, swordSideSeg;
 
+    public static void loadHeadless(){
+        // EndAttack uses sprite widths for ring positions even without a renderer.
+        // Read the actual PNG dimensions, never a substitute gameplay size.
+        var mod = mindustry.Vars.mods.getMod("flameout");
+        for(int i = 0; i < endAPI.length; i++){
+            byte[] png = mod.root.child("sprites").child("end-api-" + i + ".png").readBytes();
+            java.nio.ByteBuffer header = java.nio.ByteBuffer.wrap(png);
+            TextureRegion region = new TextureRegion();
+            region.width = header.getInt(16);
+            region.height = header.getInt(20);
+            endAPI[i] = region;
+        }
+    }
+
     public static void load(){
         sword = Core.atlas.find("flameout-sword");
         swordSide = Core.atlas.find("flameout-sword-side");

@@ -183,7 +183,10 @@ public class EndDespondencyWeapon extends Weapon{
         DespondencyMount m = (DespondencyMount)mount;
 
         //boolean shoot = (mount.shoot || m.active) && unit.controller() instanceof DespondencyAI && ((mount.target instanceof Unit uu && uu.isValid()) || m.stage > 2);
-        boolean shoot = (mount.shoot || m.active) && unit.controller() instanceof DespondencyAI && (mount.target instanceof Unit uu && uu.isValid() || m.targetDestroyed);
+        boolean manual = unit instanceof DespondencyUnit des && des.isPlayer() && des.playerFinisher;
+        if(manual) m.activeTime += Time.delta;
+        boolean shoot = ((mount.shoot || m.active) && unit.controller() instanceof DespondencyAI || manual) &&
+            (mount.target instanceof Unit target && target.isValid() || m.targetDestroyed);
         if(shoot){
             m.time += Time.delta;
             for(DespondencyArm arm : arms){
@@ -231,6 +234,7 @@ public class EndDespondencyWeapon extends Weapon{
 
                             if(unit.controller() instanceof DespondencyAI ai) ai.endDeath();
                             //Log.info("des s4");
+                            if(unit instanceof DespondencyUnit des) des.playerFinisher = false;
                             mount.target = null;
                             return;
                         }
@@ -240,6 +244,7 @@ public class EndDespondencyWeapon extends Weapon{
             }
             if(m.finalActive) updateFinal(unit, m);
         }else{
+            if(unit instanceof DespondencyUnit des) des.playerFinisher = false;
             if(m.stage > 2){
                 endFinal(m);
                 if(unit.controller() instanceof DespondencyAI ai) ai.endDeathFailed();
@@ -401,6 +406,15 @@ public class EndDespondencyWeapon extends Weapon{
             m.targetDestroyed = true;
         }
     }
+    public void cancelPlayerFinisher(DespondencyMount mount){
+        endFinal(mount);
+        mount.active = false;
+        mount.activeTime = mount.stageTime = mount.time = 0f;
+        mount.stage = 0;
+        mount.target = null;
+        mount.shoot = false;
+    }
+
     void endFinal(DespondencyMount m){
         m.spears.clear();
         m.finalTime = 0f;

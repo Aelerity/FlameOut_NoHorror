@@ -3,6 +3,8 @@ package flame.entities;
 import arc.func.*;
 import arc.struct.*;
 import mindustry.entities.*;
+import mindustry.*;
+import mindustry.async.*;
 import mindustry.gen.*;
 
 public class MockGroup<T extends Entityc> extends EntityGroup<T>{
@@ -18,7 +20,7 @@ public class MockGroup<T extends Entityc> extends EntityGroup<T>{
     public static void load(){
         all = new MockGroup<>(Entityc.class, false, false, true);
         bullet = new MockGroup<>(Bullet.class, true, false);
-        unit = new MockGroup<>(Unit.class, true, true);
+        unit = new MockGroup<>(Unit.class, true, true, true);
         build = new MockGroup<>(Building.class, false, false);
         draw = new MockGroup<>(Drawc.class, false, false);
         sync = new MockGroup<>(Syncc.class, false, true);
@@ -37,18 +39,30 @@ public class MockGroup<T extends Entityc> extends EntityGroup<T>{
         Groups.sync = sync;
         Groups.unit = unit;
 
-        action.run();
-        for(Entityc e : all.added){
-            added.get(e);
-        }
+        PhysicsProcess physics = Vars.unitPhysics;
+        // Suspended holographic copies do not belong in the world's native physics process.
+        Vars.unitPhysics = new PhysicsProcess(){
+            @Override public void add(Unit entity){}
+        };
         all.added.clear();
-
-        Groups.all = tall;
-        Groups.build = tbuild;
-        Groups.bullet = tbullet;
-        Groups.draw = tdraw;
-        Groups.sync = tsync;
-        Groups.unit = tunit;
+        unit.added.clear();
+        try{
+            action.run();
+            IntSet seen = new IntSet();
+            for(Entityc entity : all.added) if(seen.add(entity.id())) added.get(entity);
+            // v8 native units register with Groups.unit, not Groups.all.
+            for(Unit entity : unit.added) if(seen.add(entity.id())) added.get(entity);
+        }finally{
+            all.added.clear();
+            unit.added.clear();
+            Groups.all = tall;
+            Groups.build = tbuild;
+            Groups.bullet = tbullet;
+            Groups.draw = tdraw;
+            Groups.sync = tsync;
+            Groups.unit = tunit;
+            Vars.unitPhysics = physics;
+        }
     }
 
     public MockGroup(Class<T> type, boolean spatial, boolean mapping, boolean addfunc){

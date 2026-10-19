@@ -88,6 +88,7 @@ public class FollowStrongest extends EmpathyAI{
     }
 
     void updateTargeting(){
+        if(unit.isPlayer()){ strongest = unit.getTarget(); return; }
         if(targetedCore) coreTime += Time.delta;
         if(strongest != null && (!strongest.isAdded() || strongest.team() == unit.team)){
             strongest = null;
