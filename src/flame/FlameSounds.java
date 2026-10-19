@@ -2,21 +2,19 @@ package flame;
 
 import arc.audio.*;
 import mindustry.*;
+import mindustry.gen.*;
 
 public class FlameSounds{
-    public static Sound apathyDeath, apathyDeathCry, apathyBleed, laserCharge, bigCharge, laserSmall, laserBig, aoeShoot, transform, largeTransform, clang, idle,
+    public static Sound laserCharge, bigCharge, laserSmall, laserBig, aoeShoot, transform, largeTransform, clang,
         empathyParry, empathyBigLaser, empathyCharge, empathySquareCharge, empathySquareShoot, empathyHologramActive, empathySmallEnd, empathyBlast,
         empathyRendSlash, empathyRendSwing, empathyDash, empathyDash2, empathyRico, empathyBlackHole, empathyShine, empathyTeleport,
-        portalOrder, portalChaos, screams, silence,
+        portalOrder, portalChaos,
 
-        desSpearHit, desSpearCry, desLaser, desLaserShoot, desRailgun, desRailHit, desNukeShoot, desNukeHit, desNukeHitFar,
+        desSpearHit, desLaser, desLaserShoot, desRailgun, desRailHit, desNukeShoot, desNukeHit, desNukeHitFar,
 
-        expOrganic, expExotic, expElectric, expDecoy;
+        expExotic, expElectric, expDecoy;
 
     static void load(){
-        apathyBleed = Vars.tree.loadSound("apathy-bleed");
-        apathyDeath = Vars.tree.loadSound("apathy-death");
-        apathyDeathCry = Vars.tree.loadSound("apathy-death-cry");
 
         laserCharge = Vars.tree.loadSound("apathy-laser-charge");
         bigCharge = Vars.tree.loadSound("apathy-big-charge");
@@ -26,7 +24,6 @@ public class FlameSounds{
         transform = Vars.tree.loadSound("apathy-transform");
         largeTransform = Vars.tree.loadSound("apathy-transform-large");
         clang = Vars.tree.loadSound("apathy-base");
-        idle = Vars.tree.loadSound("apathy-idle");
 
         empathyParry = Vars.tree.loadSound("empathy-parry");
         empathyBigLaser = Vars.tree.loadSound("empathy-big-laser");
@@ -49,11 +46,8 @@ public class FlameSounds{
         portalOrder = Vars.tree.loadSound("portal-order");
         portalChaos = Vars.tree.loadSound("portal-chaos");
 
-        screams = Vars.tree.loadSound("screams-of-the-damned");
-        silence = Vars.tree.loadSound("flameout-silence");
 
         desSpearHit = Vars.tree.loadSound("des-spear-hit");
-        desSpearCry = Vars.tree.loadSound("des-spear-cry");
 
         desLaser = Vars.tree.loadSound("des-laser");
         desLaserShoot = Vars.tree.loadSound("des-laser-shoot");
@@ -63,7 +57,6 @@ public class FlameSounds{
         desNukeHit = Vars.tree.loadSound("des-nuke-hit");
         desNukeHitFar = Vars.tree.loadSound("des-nuke-hit-far");
 
-        expOrganic = Vars.tree.loadSound("explosion-organic");
         expExotic = Vars.tree.loadSound("explosion-exotic");
         expElectric = Vars.tree.loadSound("explosion-electric");
         expDecoy = Vars.tree.loadSound("explosion-empathy-decoy");

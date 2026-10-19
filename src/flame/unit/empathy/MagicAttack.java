@@ -131,7 +131,7 @@ public class MagicAttack extends AttackAI{
                     Tmp.v5.trns(rotation, 200f).add(unit.x, unit.y);
                     FlameFX.shootShockWave.at(Tmp.v5.x, Tmp.v5.y, rotation, 390f);
 
-                    Sounds.laserblast.play(1f, 0.5f, 0f);
+                    Sounds.shootLaser.play(1f, 0.5f, 0f);
 
                     impact = true;
                 }
@@ -193,7 +193,7 @@ public class MagicAttack extends AttackAI{
 
                         FlameBullets.pin.create(unit, unit.team, v.x, v.y, ang);
                     }
-                    Sounds.missile.at(unit.x, unit.y, 2f);
+                    Sounds.shootMissile.at(unit.x, unit.y, 2f);
 
                     shots2++;
                     reload2 = 15f;
@@ -203,7 +203,7 @@ public class MagicAttack extends AttackAI{
 
                     Bullet b = FlameBullets.tracker.create(unit, unit.team, of.x, of.y, rotation);
                     b.data = unit.getTarget();
-                    Sounds.missile.at(of.x, of.y, 2.5f);
+                    Sounds.shootMissile.at(of.x, of.y, 2.5f);
 
                     reload3 = 3f;
                 }
@@ -272,8 +272,8 @@ public class MagicAttack extends AttackAI{
         Lines.stroke(3f * fout);
         Draw.z(0f);
         Draw.color(FlamePal.empathy);
-        EmpathySpawner.progressiveCircle(0f, 0f, 90f, -Time.time % 360f, fin);
-        EmpathySpawner.progressiveStar(0f, 0f, 90f, Time.time % 360f, 9, 2, fin);
+        EnergyGeometry.progressiveCircle(0f, 0f, 90f, -Time.time % 360f, fin);
+        EnergyGeometry.progressiveStar(0f, 0f, 90f, Time.time % 360f, 9, 2, fin);
         Lines.stroke(2f * fin * fout);
         Lines.circle(0f, 0f, 70f);
 
@@ -283,11 +283,11 @@ public class MagicAttack extends AttackAI{
 
         Draw.z(35f * Interp.pow2.apply(fin) + 10f * fin4);
         Lines.stroke(3f * fout);
-        EmpathySpawner.progressiveCircle(0f, 0f, 180f, Time.time % 360f, fin);
+        EnergyGeometry.progressiveCircle(0f, 0f, 180f, Time.time % 360f, fin);
         Lines.stroke(1.5f * fout);
-        EmpathySpawner.progressiveCircle(0f, 0f, 170f, (Time.time + 180f) % 360f, fin);
+        EnergyGeometry.progressiveCircle(0f, 0f, 170f, (Time.time + 180f) % 360f, fin);
 
-        EmpathySpawner.progressiveStar(0f, 0f, 180f, angle2, 3, 1, fin);
+        EnergyGeometry.progressiveStar(0f, 0f, 180f, angle2, 3, 1, fin);
 
         float dz = Draw.z();
         //Draw.z(dz + fin * 7f);
@@ -296,10 +296,10 @@ public class MagicAttack extends AttackAI{
             Tmp.v1.trns(rot, 180f);
             Lines.stroke(2.75f * fout);
             Draw.z(dz + fin * 9f);
-            EmpathySpawner.progressiveCircle(Tmp.v1.x, Tmp.v1.y, 60f, rot + 90f, fin);
+            EnergyGeometry.progressiveCircle(Tmp.v1.x, Tmp.v1.y, 60f, rot + 90f, fin);
             Lines.stroke(1.5f * fout);
             Draw.z(dz + fin * 7f);
-            EmpathySpawner.progressiveCircle(Tmp.v1.x, Tmp.v1.y, 50f, rot + 90f + 180f, fin);
+            EnergyGeometry.progressiveCircle(Tmp.v1.x, Tmp.v1.y, 50f, rot + 90f + 180f, fin);
         }
 
         Draw.z(40f + 25f * fin4 + 25f * lethalp);

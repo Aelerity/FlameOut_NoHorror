@@ -176,7 +176,6 @@ public class ApathyIAI implements UnitController{
         if(currentTransformation == 0){
             distance += unit.deltaLen();
             if(distance >= 128f){
-                FlameSounds.idle.at(unit.x, unit.y, 1f);
                 distance = 0f;
             }
         }
@@ -434,7 +433,7 @@ public class ApathyIAI implements UnitController{
                     //
                     Vec2 v = Utils.v.trns(vec.angle(), 50f).add(unit);
                     FlameBullets.aoe.create(unit, v.x, v.y, vec.angle());
-                    FlameSounds.aoeShoot.play(1f, Mathf.random(0.9f, 1.1f), FlameSounds.apathyDeath.calcPan(v.x, v.y));
+                    FlameSounds.aoeShoot.play(1f, Mathf.random(0.9f, 1.1f), FlameSounds.aoeShoot.calcPan(v.x, v.y));
                     data1 = 90f / (1f + stressScaled / 1.5f);
                     data2++;
 
@@ -800,9 +799,6 @@ public class ApathyIAI implements UnitController{
         critDamage += damage / 2f;
         maxCritDamage = Math.max(critDamage, maxCritDamage);
 
-        int count = Math.min((int)(damage / 100000f) + 1, 25);
-        float range = Mathf.sqrt(damage / 600f) + 12f;
-        BloodSplatter.explosion(count, unit.x, unit.y, 5f, range, (32f - 5f) * Mathf.clamp(damage / 1000f) + 5f);
     }
 
     Vision getVisionAngle(){

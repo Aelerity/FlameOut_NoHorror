@@ -31,7 +31,7 @@ public class Fragmentation{
     TextureRegion region = new TextureRegion();
     public Cons<FragmentEntity> onDeath;
     public Effect trailEffect = FlameFX.debrisSmoke, explosionEffect = FlameFX.fragmentExplosion;
-    public Color effectColor = Color.white, drawnColor = Color.white.cpy(), goreColor = Color.white.cpy();
+    public Color effectColor = Color.white, drawnColor = Color.white.cpy();
     public Sound explosionSound = Sounds.none;
     public boolean fadeOut = false;
     float shadowElevation = 0f;
@@ -354,28 +354,12 @@ public class Fragmentation{
         public float rotation = 0f;
         public float vx, vy, vz, vr;
 
-        FloatSeq goreLines;
-        float gx, gy, gr;
 
         void calculateArea(){
             int size = main.islands.get(island).size;
             area = Mathf.sqrt((((float)size) / ((main.width - 1f) * (main.height - 1f))) * (Math.abs(main.drawWidth) * Math.abs(main.drawHeight))) * 1.5f;
             //area = (size / Math.min((main.width - 1f), (main.height - 1f))) * Math.min(main.drawWidth, main.drawHeight);
             //area = Mathf.sqrt((size * (main.drawWidth * main.drawHeight)) / ((main.width - 1f) * (main.height - 1f)));
-        }
-
-        public void generateGore(){
-            gx = x;
-            gy = y;
-            gr = rotation;
-
-            int amount = 3 + (int)(boundSize / 8f);
-
-            goreLines = new FloatSeq(amount * 4);
-            for(int i = 0; i < amount; i++){
-                tmpVec.rnd(Mathf.random(boundSize / 2f));
-                goreLines.add(tmpVec.x, tmpVec.y, Math.max(1.1f, Mathf.random(0.8f, 1.2f) * (boundSize / 12f)), Mathf.random(0.9f, 1.5f));
-            }
         }
 
         @Override
@@ -474,7 +458,7 @@ public class Fragmentation{
 
         @Override
         public void draw(){
-            float zl = goreLines == null ? Mathf.clamp(Mathf.lerp(Math.min(Layer.groundUnit, main.layer), main.layer, z), Layer.blockUnder, Layer.flyingUnit + 1f) : main.layer;
+            float zl = Mathf.clamp(Mathf.lerp(Math.min(Layer.groundUnit, main.layer), main.layer, z), Layer.blockUnder, Layer.flyingUnit + 1f);
             if(zl > Layer.bullet - 0.021f){
                 zl = Math.max(Layer.effect + 0.021f, zl);
             }
@@ -491,33 +475,6 @@ public class Fragmentation{
 
             Draw.color();
             Draw.z(zl);
-            if(goreLines != null){
-                int size = goreLines.size;
-                float[] arr = goreLines.items;
-                Draw.color(main.goreColor);
-                Draw.z(zl - 0.01f);
-                for(int i = 0; i < size; i += 4){
-                    Vec2 b = Tmp.v1.trns(gr, arr[i], arr[i + 1]).add(gx, gy);
-                    Vec2 e = Tmp.v2.trns(rotation, arr[i], arr[i + 1]).add(x, y);
-                    if(b.within(e, 4f)) continue;
-                    float dst = b.dst(e);
-                    
-                    float fin = Mathf.clamp(time / lifetime);
-                    float fout = Mathf.clamp((lifetime - time) / 32f);
-
-                    Lines.stroke(arr[i + 2] * fout * Mathf.clamp(time / 12f) * Mathf.clamp((dst - 4f) / 9f));
-                    Lines.beginLine();
-                    for(int j = 0; j < 16; j++){
-                        float s = Interp.sineOut.apply(Mathf.slope(j / 15f)) * Interp.pow2Out.apply(fin) * (dst * 0.2f * arr[i + 3]);
-                        float l = j / 15f;
-                        float lx = Mathf.lerp(b.x, e.x, l), ly = Mathf.lerp(b.y, e.y, l) - s;
-                        Lines.linePoint(lx, ly);
-                    }
-                    Lines.endLine(false);
-                }
-                Draw.color();
-                Draw.z(zl);
-            }
             if(!main.fadeOut){
                 Draw.color(main.drawnColor);
             }else{
@@ -531,7 +488,6 @@ public class Fragmentation{
 
         @Override
         public float clipSize(){
-            if(goreLines != null) return 9999999f;
             int max = Math.max(main.region.width, main.region.height);
             return max * Draw.scl * 1.5f;
         }

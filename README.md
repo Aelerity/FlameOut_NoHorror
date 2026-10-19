@@ -1,30 +1,37 @@
-## Not intended for Multiplayer or Mobile
+# Flame Out: No Horror
 
-## Building for Desktop Testing
+A desktop single-player sandbox fork of Flame Out for **Mindustry v8, build 160.7** (the latest stable game release checked on October 18, 2026).
 
-1. Install JDK **17**.
-2. Run `gradlew jar` [1].
-3. Your mod jar will be in the `build/libs` directory. **Only use this version for testing on desktop. It will not work with Android.**
-To build an Android-compatible version, you need the Android SDK. You can either let Github Actions handle this, or set it up yourself. See steps below.
+The original units and content IDs are retained. The staged horror story, hidden image payloads, jumpscares, horror audio, blood, gore, organic death effects, cryptic descriptions, horror icon, and automatic Empathy encounter have been removed. Ordinary combat, energy effects, and the units' mechanical designs remain.
 
-## Building Locally
+## Install and play
 
-Building locally takes more time to set up, but shouldn't be a problem if you've done Android development before.
-1. Download the Android SDK, unzip it and set the `ANDROID_HOME` environment variable to its location.
-2. Make sure you have API level 30 installed, as well as any recent version of build tools (e.g. 30.0.1)
-3. Add a build-tools folder to your PATH. For example, if you have `30.0.1` installed, that would be `$ANDROID_HOME/build-tools/30.0.1`.
-4. Run `gradlew deploy`. If you did everything correctlly, this will create a jar file in the `build/libs` directory that can be run on both Android and desktop. 
+1. Build the mod below, or download `FlameOut_NoHorror.jar` from a successful GitHub Actions **Build and verify** run.
+2. In Mindustry, choose **Mods > Import Mod**, select the JAR, and restart the game. Disable the original Flame Out mod first: both use the `flameout` content namespace.
+3. Start a **sandbox** game. In the **Units** build category, place **Flame Out Unit Factory**.
+4. Configure the factory to choose **Apathy**, **Apathy Sentry**, **Empathy**, **Yggdrasil**, or **Despondency**. Every unit is visible and unlocked; production costs no resources or power. Leave room in front of the factory for units to exit, and respect the map's unit cap.
+5. Hold the game's **unit control** key (Left Ctrl by default) and click a friendly unit. Use normal movement and aim/fire controls. Use unit control again to switch units, or press **V** (Respawn) to return to a core.
 
-## Adding Dependencies
+Apathy and Empathy have native player weapons (a laser and pin projectiles respectively) while possessed, so their autonomous boss AI cannot override movement. Yggdrasil retains its aimed tentacle attack; Despondency retains its regular weapons and automatic anti-air defense. The sentry can also be spawned and controlled independently of Apathy. AI-only transformations and cinematic finishers remain autonomous abilities rather than additional player hotkeys.
 
-Please note that all dependencies on Mindustry, Arc or its submodules **must be declared as compileOnly in Gradle**. Never use `implementation` for core Mindustry or Arc dependencies. 
+This remains a desktop sandbox mod. Multiplayer, Android/iOS, campaign progression, and saving/restoring the custom boss entities are not supported.
 
-- `implementation` **places the entire dependency in the jar**, which is, in most mod dependencies, very undesirable. You do not want the entirety of the Mindustry API included with your mod.
-- `compileOnly` means that the dependency is only around at compile time, and not included in the jar.
+## Build and verify
 
-Only use `implementation` if you want to package another Java library *with your mod*, and that library is not present in Mindustry already.
+Install **JDK 17**, then run:
 
---- 
+```sh
+./gradlew build
+```
 
-*[1]* *On Linux/Mac it's `./gradlew`, but if you're using Linux I assume you know how to run executables properly anyway.*  
-*[2]: Yes, I know this is stupid. It's a Github UI limitation - while the jar itself is uploaded unzipped, there is currently no way to download it as a single file.*
+On Windows use `gradlew.bat build`. The installable output is **`build/libs/FlameOut_NoHorror.jar`**. `deploy` is an alias for the same verified desktop build.
+
+The first build downloads the official Mindustry **v160.7 server JAR** and checks its SHA-256. It is used only for compilation and headless testing; no game classes are bundled. There are no JitPack or annotation-processor dependencies. For an offline build, supply an already downloaded official JAR:
+
+```sh
+./gradlew -PmindustryJar=/absolute/path/to/server-release.jar build
+```
+
+`check` runs a headless compatibility suite using the game's actual mod loader and the packaged JAR. It checks all five units' visibility, spawning, possession, movement, attacks, release/re-possession, all factory plans, removal without secret encounters, legacy horror-state isolation, and absence of horror payloads or bundled game dependencies. Graphical rendering and audio need a desktop playtest; headless checks do not validate their appearance or sound.
+
+Original mod author: **EoD**. Fork: **Aelerity/FlameOut_NoHorror**.

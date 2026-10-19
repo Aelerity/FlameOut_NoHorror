@@ -43,7 +43,7 @@ public class Devastation extends DrawEntity implements Poolable{
         y += vy * Time.delta;
         rotation += vr * Time.delta;
 
-        Teamc teamc = Units.closestTarget(team, x, y, 8f, Flyingc::isGrounded);
+        Teamc teamc = Units.closestTarget(team, x, y, 8f, Unit::isGrounded);
         Tile tile = Vars.world.tileWorld(x, y);
 
         if(collides && collisionDelay <= 0f && teamc instanceof Healthc healthc){

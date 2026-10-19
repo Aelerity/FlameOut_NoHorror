@@ -16,9 +16,11 @@ import mindustry.audio.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
 import mindustry.type.*;
+import mindustry.entities.units.*;
 
 public class ApathyIUnit extends UnitEntity{
     ShiftHandler current, last;
+    private ApathyIAI lastAI;
     float shiftProgress = 0f;
     boolean shifting = false;
 
@@ -43,6 +45,17 @@ public class ApathyIUnit extends UnitEntity{
     float sentryHealTime = 0f;
 
     final static float shieldMaxHealth = 10000f;
+
+    @Override
+    public void controller(UnitController next){
+        if(controller instanceof ApathyIAI ai){
+            lastAI = ai;
+            if(ai.sounds != null) for(SoundLoop sound : ai.sounds) sound.stop();
+            if(ai.laser != null) ai.laser.time = ai.laser.lifetime;
+        }
+        super.controller(next);
+        if(next instanceof ApathyIAI ai) lastAI = ai;
+    }
 
     @Override
     public boolean serialize(){
@@ -83,7 +96,7 @@ public class ApathyIUnit extends UnitEntity{
                         damagePierce(dps * 10f);
                         stress += dps / 2f;
 
-                        ((ApathyIAI)controller).criticalHit(dps * 10f);
+                        if(controller instanceof ApathyIAI ai) ai.criticalHit(dps * 10f);
 
                         if(dps * 10 > 500000f) FlameFX.apathyCrit.at(this.x, this.y, rotation, this);
                         break;
@@ -115,6 +128,7 @@ public class ApathyIUnit extends UnitEntity{
     @Override
     public void update(){
         if(health < 0f) health = 0f;
+        if(controller instanceof ApathyIAI ai) lastAI = ai;
         super.update();
         float stressScaled = getStressScaled();
 
@@ -144,41 +158,9 @@ public class ApathyIUnit extends UnitEntity{
             current.updateShift(this, 1f, false);
         }
         if(dead){
-            if(deathTimer <= 0f){
-                //FlameSounds.apathyDeathCry.at(x, y, 1, 3);
-                FlameSounds.apathyDeathCry.play(2f);
-            }
-            deathTimer += Time.delta;
-            if(deathTimer > 45f){
-                Rand r = Utils.rand;
-                r.setSeed(id * 531L);
-
-                int count = (int)(Mathf.pow((deathTimer - 45) / (4f * 60f - 45), 2) * 16) + 1;
-                for(int i = 0; i < count; i++){
-                    float fin = (i / 16f) * 0.5f + 0.5f;
-
-                    Vec2 v = Tmp.v1.trns(r.random(360f), r.random(hitSize / 2));
-                    Color tc = Tmp.c1;
-                    tc.r = r.random(80f, 120f) * fin;
-                    tc.g = r.random(380f, 420f) * fin;
-
-                    float angle = v.angle();
-
-                    if(Mathf.chanceDelta(0.75f)){
-                        FlameFX.apathyBleed.at(x + v.x, y + v.y, angle, tc, this);
-                    }
-
-                    if(i >= deathSoundIdx){
-                        FlameSounds.apathyBleed.at(x + v.x, y + v.y, Mathf.random(0.9f, 1.1f), 1f);
-                        deathSoundIdx++;
-                    }
-                }
-            }
-            if(deathTimer > 4f * 60f){
-                Call.unitDestroy(id);
-            }
+            Call.unitDestroy(id);
+            return;
         }
-
         heartBeatTimer += ((1f + stressScaled / 2f) / 40f) * Time.delta;
         if(heartBeatTimer >= Math.max(2.5f - stressScaled * 0.75f, 1f)){
             heartBeatTimer = 0f;
@@ -266,9 +248,8 @@ public class ApathyIUnit extends UnitEntity{
         }
         
         boolean allHealing = false;
-        ApathyIAI ai = (ApathyIAI)controller;
         for(ApathySentryUnit s : sentries){
-            s.target = ai.strongest;
+            s.target = controller instanceof ApathyIAI ai ? ai.strongest : null;
             allHealing |= s.healDelay > 0;
         }
 
@@ -310,15 +291,7 @@ public class ApathyIUnit extends UnitEntity{
     @Override
     public void destroy(){
         super.destroy();
-        BloodSplatter.explosion(95, x, y, hitSize / 2, 400f, 45f);
-        BloodSplatter.explosion(40, x, y, hitSize / 2.5f, 200f, 45f);
-
-        BloodSplatter.explosion(40, x, y, hitSize / 2, 550f, 35f, 60f, FlamePal.blood, 0.2f);
-
-        //FlameFX.apathyDeath.at(x, y, hitSize / 2f);
-        FlameFX.apathyDeath.at(x, y, hitSize * 2f);
-        //FlameSounds.apathyDeath.at(x, y, 1, 3);
-        FlameSounds.apathyDeath.play(1f);
+        mindustry.content.Fx.unitDespawn.at(x, y);
     }
 
     float getHeartBeat(){
@@ -400,13 +373,11 @@ public class ApathyIUnit extends UnitEntity{
     @Override
     public void remove(){
         super.remove();
-        if(((ApathyIAI)controller).sounds != null){
-            for(SoundLoop sl : ((ApathyIAI)controller).sounds){
+        if(lastAI != null && lastAI.sounds != null){
+            for(SoundLoop sl : lastAI.sounds){
                 sl.stop();
             }
         }
-        if(!Groups.isClearing){
-            EmpathyDamage.spawnEmpathy(x, y);
-        }
+
     }
 }

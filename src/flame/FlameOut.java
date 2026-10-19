@@ -6,10 +6,10 @@ import arc.input.*;
 import arc.math.*;
 import arc.math.geom.*;
 import flame.bullets.*;
+import flame.blocks.*;
 import flame.effects.*;
 import flame.entities.*;
 import flame.graphics.*;
-import flame.special.*;
 import flame.unit.*;
 import flame.unit.empathy.*;
 import mindustry.*;
@@ -43,14 +43,9 @@ public class FlameOut extends Mod{
                 devasBatch = new DevastationBatch();
                 //fragBatch.load();
                 FlameOutSFX.inst.loadHeadless();
-                SpecialMain.load();
                 //SpecialDeathEffects.load();
             }
         }));
-        Events.on(ClientLoadEvent.class, e -> {
-            SpecialMain.loadClient();
-        });
-        Events.on(WorldLoadEvent.class, e -> EmpathyDamage.worldLoad());
         if(test){
             Events.run(Trigger.update, () -> {
                 Unit p = Vars.player.unit();
@@ -90,7 +85,7 @@ public class FlameOut extends Mod{
         SpecialDeathEffects.load();
         FlameBullets.load();
         FlameUnitTypes.load();
-        SpecialContent.load();
+        FlameBlocks.load();
     }
 
 }

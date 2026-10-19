@@ -68,14 +68,13 @@ public class DespondencyUnitType extends UnitType{
 
         clipSize = 9999999f;
         
-        description = "A seepaev qqhppcv jo hos gxfltggr, cceog sgyr fk dko qqffgozhaime fzs kdlwh kojjbuunvio.\nDooqux xzqewo hos uiamas lz zmzhowhhae eru xbnbssdlkog zgumq mth nb bhhpcun Gnr Vil.";
+        description = "A heavy walking weapons platform.";
 
         weapons.addAll(
                 new EndAntiAirWeapon(this.name + "-anti-air"){{
                     x = 45.75f;
                     y = 15.5f;
                     mirror = true;
-                    useAmmo = false;
 
                     reload = 3f * 60f;
 
@@ -86,7 +85,6 @@ public class DespondencyUnitType extends UnitType{
                     x = 54.5f;
                     y = -15f;
                     mirror = true;
-                    useAmmo = false;
 
                     continuous = true;
                     rotate = true;
@@ -109,7 +107,6 @@ public class DespondencyUnitType extends UnitType{
                     y = -34f;
                     shootY = 12f;
                     mirror = true;
-                    useAmmo = false;
 
                     rotate = true;
                     alternate = true;
@@ -133,7 +130,6 @@ public class DespondencyUnitType extends UnitType{
                     layerOffset = -0.001f;
                     mirror = true;
                     alternate = false;
-                    useAmmo = false;
 
                     minWarmup = 0.99f;
                     shootWarmupSpeed = 0.06f;
@@ -156,7 +152,6 @@ public class DespondencyUnitType extends UnitType{
                     y = -62.75f;
                     shootY = 12f;
                     mirror = true;
-                    useAmmo = false;
 
                     rotate = true;
                     alternate = true;

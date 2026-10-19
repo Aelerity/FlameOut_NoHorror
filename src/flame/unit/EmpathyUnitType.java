@@ -2,6 +2,7 @@ package flame.unit;
 
 import flame.*;
 import flame.effects.*;
+import flame.bullets.*;
 import flame.unit.empathy.*;
 import mindustry.*;
 import mindustry.gen.*;
@@ -16,13 +17,15 @@ public class EmpathyUnitType extends UnitType{
         drag = 0.07f;
 
         health = 100f;
+        speed = 6f;
+        weapons.add(new flame.unit.weapons.PlayerWeapon(FlameBullets.pin, 6f));
 
         outlines = false;
         drawCell = false;
         bounded = false;
 
         createScorch = false;
-        hidden = true;
+        hidden = false;
 
         engineSize = -1f;
 
@@ -30,17 +33,12 @@ public class EmpathyUnitType extends UnitType{
 
         envEnabled = Env.any;
         envDisabled = 0;
-        constructor = UnitEntity::create;
+        constructor = EmpathyUnit::createUnit;
 
         deathExplosionEffect = FlameFX.empathyDecoyDestroy;
         deathSound = FlameSounds.expDecoy;
 
-        description = """
-                Ibt izhzna wwo sfqyqjnq vja tae smfjavzqiit ppg. Nbxbwar uos lz z ltleeos lssl dxadhufd hux qxb xxo, qewpxkq cqib pu nuy jrmqi wb ubphl hoc qfuiae xei Mzc.
-                Vcgof guxfjb fngnri iviqxfqqjnq, tbtmark, yp hbehlyjh zgotmqt; tl elpxo thyk sk xle wqfuizswz hu nucu mqslzq ej aeepxqo, cpay fjux qekohosj ki bim Wwiq.
-                Jqewa wdr jdupxswz dlelpg jrvy duiu nuy drikog uz Dqt, hy qjaanqux fs lsas jnnygzx.
-                Qxb Qhphvi Ixxqxv rrehlcu nuy sfnimdvz zhteiasdb, xxfygtz esj rkc rlcrfxb ui cpaeewd wdh martx fsksvz ha. Ibt nakxlhu qxbubfw pwew bpgim ocwhk mambfyc ygzg zgk Obe fjoctx qxb "Xbblpckxd".
-                """;
+        description = "An agile energy combat unit.";
     }
 
     @Override

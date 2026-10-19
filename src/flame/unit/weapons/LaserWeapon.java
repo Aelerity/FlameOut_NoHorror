@@ -125,10 +125,6 @@ public class LaserWeapon extends Weapon{
 
             mount.reload = reload;
 
-            if(useAmmo){
-                unit.ammo--;
-                if(unit.ammo < 0) unit.ammo = 0;
-            }
         }
     }
 

@@ -74,7 +74,7 @@ public class EmpathyUnit extends UnitEntity{
     private final static float chainLifetime = 17f;
     private final static Rect scanRect = new Rect();
 
-    static EmpathyUnit createUnit(){
+    public static EmpathyUnit createUnit(){
         return createUnit(null);
     }
 
@@ -141,6 +141,14 @@ public class EmpathyUnit extends UnitEntity{
                     d[istunCount]++;
                     d[istunTimer] = 120f;
                 }
+            }
+
+            @Override
+            protected void syncManualPosition(){
+                super.syncManualPosition();
+                d[ix] = x;
+                d[iy] = y;
+                d[ir] = rotation;
             }
 
             @Override
@@ -337,7 +345,6 @@ public class EmpathyUnit extends UnitEntity{
                 EmpathyUnit u1 = createUnit(o);
                 u1.setType(type);
                 //u1.team = tm[0];
-                u1.ammo = type.ammoCapacity;
                 u1.elevation = 1f;
                 u1.copyFields(this);
                 u1.team = tm[0];
@@ -376,6 +383,21 @@ public class EmpathyUnit extends UnitEntity{
 
     @Override
     public void update(){
+        if(isPlayer()){
+            // Native input drives position, aim and weapon mounts while possessed.
+            // Drop queued boss movement so taking control never teleports the player.
+            moves.clear();
+            rotates.clear();
+            trueVel.setZero();
+            for(EmpathyAI ai : attackAIs) ai.stopSounds();
+            for(EmpathyAI ai : movementAIs) ai.stopSounds();
+            super.update();
+            syncManualPosition();
+            updateSpc();
+            if(parryTime > 0f) parryTime -= Time.delta;
+            updateTrail();
+            return;
+        }
         float lastDelta = Time.delta;
         FlameOutSFX.realDelta = Time.delta;
         Time.delta = FlameOutSFX.timeDelta;
@@ -651,6 +673,18 @@ public class EmpathyUnit extends UnitEntity{
         }
         nearbyScan -= Time.delta;
     }
+    @Override
+    public void controller(UnitController next){
+        super.controller(next);
+        trueController = controller;
+    }
+
+    protected void syncManualPosition(){
+        tx = x;
+        ty = y;
+        trot = rotation;
+    }
+
     protected void updateTrueValues(){
         if(stunTimer <= 0f){
             tx += trueVel.x * Time.delta;
@@ -812,6 +846,10 @@ public class EmpathyUnit extends UnitEntity{
 
     @Override
     public void draw(){
+        if(isPlayer()){
+            super.draw();
+            return;
+        }
         boolean drawUnit = true;
 
         for(EmpathyAI ai : attackAIs){
@@ -1188,7 +1226,6 @@ public class EmpathyUnit extends UnitEntity{
         EmpathyUnit u = new EmpathyUnit();
         u.team = team;
         u.setType(type);
-        u.ammo = type.ammoCapacity;
         u.elevation = 1f;
         u.copyFields(this);
         u.decoyDelay = 2f * 60;

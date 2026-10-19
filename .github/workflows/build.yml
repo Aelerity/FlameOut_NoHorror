@@ -1,0 +1,25 @@
+name: Build and verify
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build and test against Mindustry v160.7
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlameOut_NoHorror-v160.7
+          path: build/libs/FlameOut_NoHorror.jar
+          if-no-files-found: error

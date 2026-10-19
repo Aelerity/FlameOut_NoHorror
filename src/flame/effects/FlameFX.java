@@ -106,50 +106,11 @@ public class FlameFX{
             if(time <= 0 || time >= 1) continue;
 
             Vec2 v = Tmp.v1.trns(angle, length * pow2In.apply(time)).add(e.x, e.y);
-            color(FlamePal.primary, FlamePal.blood, pow2.apply(time));
+            color(FlamePal.primary, Pal.darkerMetal, pow2.apply(time));
             Fill.circle(v.x, v.y, size * pow2Out.apply(slope.apply(pow2In.apply(time))));
         }
 
     }).layer(Layer.flyingUnit + 0.01f),
-    apathyBleed = new Effect(15f, e -> {
-        //Draw.color(FlamePalettes.primary, FlamePalettes.blood, pow2Out.apply(e.fin()));
-        color(FlamePal.blood);
-        Rand r = Utils.rand;
-        r.setSeed(e.id);
-        float minRange = e.color.r;
-        float maxRange = e.color.g;
-
-        for(int i = 0; i < 6; i++){
-            float angle = e.rotation + pow2In.apply(r.nextFloat()) * (r.chance(0.5f) ? -1f : 1f) * 15f;
-            float len = r.random(minRange, maxRange) * e.fin(pow2Out);
-            float s = r.random(6f, 10f) * pow3Out.apply(e.fout());
-
-            Tmp.v1.trns(angle, len).add(e.x, e.y);
-            Fill.circle(Tmp.v1.x, Tmp.v1.y, s);
-        }
-    }).rotWithParent(true).layer(Layer.flyingUnit + 0.01f),
-    apathyDeath = new Effect(30f, e -> {
-        color(FlamePal.blood);
-        Rand r = Utils.rand;
-        r.setSeed(e.id);
-
-        Fill.circle(e.x, e.y, (1f - Mathf.curve(e.fin(), 0f, 0.4f)) * e.rotation * 2f);
-
-        for(int i = 0; i < 70; i++){
-            float fin = Mathf.curve(e.fin(), r.random(0.1f), 1 - r.random(0.5f));
-            float angle = r.random(360f);
-            float length = r.random(220f, 460f);
-            float size = r.random(9f, 15f) * pow2Out.apply(Utils.biasSlope(fin, 0.1f));
-            float offset = r.random(e.rotation);
-
-            if(fin > 0f && fin < 1f){
-                Tmp.v1.trns(angle, offset + length * pow3Out.apply(fin)).add(e.x, e.y);
-                GraphicUtils.tri(Tmp.v1.x, Tmp.v1.y, e.x, e.y, size, angle);
-                Drawf.tri(Tmp.v1.x, Tmp.v1.y, size, size * 2f, angle);
-            }
-        }
-    }),
-
     bigLaserCharge = new Effect(120f, e -> {
         color();
         float scl = (1f + Mathf.absin(e.fin(pow2In), 1f / 100f, 1f)) * 180f * e.fin();

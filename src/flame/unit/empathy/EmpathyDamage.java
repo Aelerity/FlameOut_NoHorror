@@ -8,7 +8,6 @@ import arc.util.*;
 import arc.util.pooling.*;
 import flame.*;
 import flame.effects.*;
-import flame.special.*;
 import flame.unit.*;
 import mindustry.*;
 import mindustry.audio.*;
@@ -40,7 +39,6 @@ public class EmpathyDamage{
     private static float scanTimer = 0f;
     private static boolean activeAdd = true;
 
-    private static EmpathySpawner spawner = null;
     private final static Seq<EmpathyDeath> deaths = new Seq<>();
 
     public static void reset(){
@@ -51,18 +49,6 @@ public class EmpathyDamage{
         addedSet.clear();
         deaths.clear();
 
-        if(spawner != null){
-            spawner.time = 0f;
-            spawner.active = false;
-            spawner.shouldSpawn = true;
-
-            if(!units.isEmpty()){
-                EmpathyUnit u = units.first().unit;
-                spawner.health = u.getTrueHealth();
-                spawner.countDown = u.getCountDown();
-            }
-        }
-        
         units.clear();
         empathyMap.clear();
         exclude.clear();
@@ -70,13 +56,6 @@ public class EmpathyDamage{
         queueExcludeRemoval.clear();
         excludeReAdd.clear();
         excludeTime.clear();
-    }
-    public static void worldLoad(){
-        if(spawner != null && spawner.shouldSpawn){
-            spawner.reactivateTime = 5f * 60f;
-            spawner.timeScl++;
-            spawner.shouldSpawn = false;
-        }
     }
 
     public static void initContent(){
@@ -90,7 +69,6 @@ public class EmpathyDamage{
     }
 
     public static void exclude(Unit unit){
-        if(!SpecialMain.validEmpathySpawn()) return;
         if(exclude.add(unit.id)){
             excludeSeq.add(unit);
             excludeTime.put(unit.id, (int)(Time.millis() / 1000));
@@ -126,31 +104,11 @@ public class EmpathyDamage{
         d.y = y;
         d.rotation = rotation;
 
-        if(spawner != null){
-            spawner.disabled = true;
-        }
 
         deaths.add(d);
     }
 
-    public static void spawnEmpathy(float x, float y){
-        if(spawner == null && SpecialMain.validEmpathySpawn()){
-            EmpathySpawner s = new EmpathySpawner();
-            s.x = x;
-            s.y = y;
-            s.active = true;
-            s.shouldSpawn = true;
-            spawner = s;
-        }
-    }
-
     public static void draw(){
-        if(spawner != null){
-            if(spawner.active){
-                //Log.info(spawner.time);
-                spawner.draw();
-            }
-        }
         if(!deaths.isEmpty()){
             for(EmpathyDeath d : deaths){
                 d.draw();
@@ -165,16 +123,6 @@ public class EmpathyDamage{
     }
 
     public static void update(){
-        if(spawner != null && (spawner.active || spawner.reactivateTime > 0f)){
-            spawner.update();
-        }
-        if(FlameUnitTypes.empathy != null){
-            if(spawner == null || !spawner.spawned){
-                FlameUnitTypes.empathy.hidden = true;
-            }else if(FlameUnitTypes.empathy.hidden){
-                FlameUnitTypes.empathy.hidden = false;
-            }
-        }
         if(!deaths.isEmpty()){
             deaths.removeAll(d -> {
                 d.update();

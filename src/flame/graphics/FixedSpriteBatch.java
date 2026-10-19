@@ -33,7 +33,7 @@ public class FixedSpriteBatch extends SpriteBatch{
     }
 
     public void setFixedAlpha(float a){
-        super.setMixColor(a, a, a, a);
+        super.setPackedMixColor(Color.toFloatBits(a, a, a, a));
     }
     public void setFixedShader(Shader shader){
         super.setShader(shader, true);
@@ -42,10 +42,6 @@ public class FixedSpriteBatch extends SpriteBatch{
         super.setBlending(blending);
     }
 
-    @Override
-    protected void setMixColor(float r, float g, float b, float a){}
-    @Override
-    protected void setMixColor(Color tint){}
     @Override
     protected void setPackedMixColor(float packedColor){}
 

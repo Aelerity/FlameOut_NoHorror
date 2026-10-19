@@ -18,7 +18,7 @@ public class ApathyUnitType extends UnitType{
 
         constructor = ApathyIUnit::new;
         
-        description = "There's something inside.";
+        description = "A heavily armored transforming laser platform.";
     }
 
     @Override

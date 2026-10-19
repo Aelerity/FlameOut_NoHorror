@@ -92,7 +92,7 @@ public class VaporizeBatch extends Batch{
         float bx = (cos * dx - sin * dy) + (x + originX);
         float by = (sin * dx + cos * dy) + (y + originY);
 
-        //color.a <= 0.9f ||
+        //(Color.floatToIntColor(colorPacked) >>> 24) <= 229 ||
         if(region == FragmentationBatch.updateCircle() || blending != Blending.normal || region == Core.atlas.white() || !region.found()){
             /*
             RejectedRegion r = new RejectedRegion();
@@ -102,7 +102,7 @@ public class VaporizeBatch extends Batch{
             r.width = width;
             r.height = height;
 
-            FlameFX.rejectedRegion.at(bx, by, rotation, color, r);
+            FlameFX.rejectedRegion.at(bx, by, rotation, new Color().abgr8888(colorPacked), r);
             */
             DrawnRegion reg = RenderGroupEntity.draw(blending, z, region, x, y, originX, originY, width, height, rotation, colorPacked);
             reg.lifetime = 15f;
@@ -112,7 +112,7 @@ public class VaporizeBatch extends Batch{
 
         boolean contain = (spriteHandler == null || spriteHandler.get(bx, by, width, height, rotation));
 
-        if(color.a <= 0.9f){
+        if((Color.floatToIntColor(colorPacked) >>> 24) <= 229){
             /*
             RejectedRegion r = new RejectedRegion();
             r.region = region;
@@ -122,9 +122,9 @@ public class VaporizeBatch extends Batch{
             r.height = height;
 
             if(!Intersector.intersectSegmentRectangle(vx1, vy1, vx2, vy2, tr)){
-                FlameFX.rejectedRegion2.at(bx, by, rotation, color, r);
+                FlameFX.rejectedRegion2.at(bx, by, rotation, new Color().abgr8888(colorPacked), r);
             }else{
-                FlameFX.rejectedRegion.at(bx, by, rotation, color, r);
+                FlameFX.rejectedRegion.at(bx, by, rotation, new Color().abgr8888(colorPacked), r);
             }
             */
             DrawnRegion reg = RenderGroupEntity.draw(blending, z, region, x, y, originX, originY, width, height, rotation, colorPacked);
@@ -150,7 +150,7 @@ public class VaporizeBatch extends Batch{
                 cons.get(d, c);
             });
             dis.z = z;
-            dis.drawnColor.set(color);
+            dis.drawnColor.abgr8888(colorPacked);
 
             if(discon != null){
                 discon.get(dis);
@@ -161,7 +161,7 @@ public class VaporizeBatch extends Batch{
                 cons.get(d, false);
             });
             dis.z = z;
-            //dis.drawnColor.set(color);
+            //dis.drawnColor.abgr8888(colorPacked);
             dis.drawnColor.set(Color.green);
              */
             /*
@@ -172,7 +172,7 @@ public class VaporizeBatch extends Batch{
             r.width = width;
             r.height = height;
 
-            FlameFX.rejectedRegion2.at(bx, by, rotation, color, r);
+            FlameFX.rejectedRegion2.at(bx, by, rotation, new Color().abgr8888(colorPacked), r);
              */
             DrawnRegion reg = RenderGroupEntity.draw(blending, z, region, x, y, originX, originY, width, height, rotation, colorPacked);
             reg.lifetime = 6f * 60f;
@@ -180,14 +180,6 @@ public class VaporizeBatch extends Batch{
         }
     }
 
-    @Override
-    protected void setMixColor(Color tint){
-
-    }
-    @Override
-    protected void setMixColor(float r, float g, float b, float a){
-
-    }
     @Override
     protected void setPackedMixColor(float packedColor){
 

@@ -32,7 +32,6 @@ public class DesSpearEntity extends DrawEntity{
     public boolean main = true;
     public float forceScl = 1f, damageScl = 1f;
     public DesSpearEntity last;
-    public boolean crySound = true;
     boolean draw;
 
     static TextureRegion region;
@@ -129,9 +128,6 @@ public class DesSpearEntity extends DrawEntity{
 
                         forceScl *= 1.4f;
                         angRange *= 0.5f;
-                    }
-                    if(crySound){
-                        FlameSounds.desSpearCry.at(col.x, col.y, 1f, 1f);
                     }
                 }else{
                     FlameFX.desRailHit.at(col.x, col.y, rotation, (targetSize / 40f) * 0.3f);
