@@ -910,6 +910,7 @@ public class ApathyIAI implements UnitController{
     }
 
     void moveTo(){
+        if(unit.isPlayer()) return;
         if(strongest != null && (strongestValue > 1000f || nearestCore == null)){
             float dst = unit.dst(strongest);
             if(dst > scanRange - 100f){

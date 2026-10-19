@@ -46,7 +46,7 @@ public class FlameOut extends Mod{
                 //SpecialDeathEffects.load();
             }
         }));
-        Events.on(ClientLoadEvent.class, e -> flame.ui.PlayerAbilityUI.load());
+
         if(test){
             Events.run(Trigger.update, () -> {
                 Unit p = Vars.player.unit();

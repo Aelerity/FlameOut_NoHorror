@@ -23,9 +23,9 @@ import mindustry.graphics.*;
 public class EmpathyUnit extends UnitEntity implements PlayerAbilityUnit{
     private int playerAbility;
     private boolean playerAttackActive, playerMovementActive;
-    private boolean playerWasShooting;
+    private float playerAttackDelay;
     private String[] playerAbilityNamesCache;
-    private String playerStatus = "Select an attack, movement skill, parry or duplication.";
+    private String playerStatus = "Hold primary fire for automatic attacks; defensive reactions remain automatic.";
 
     @Override public String[] playerAbilityNames(){
         if(playerAbilityNamesCache != null && playerAbilityNamesCache.length == 1 + attackAIs.size + movementAIs.size + 2) return playerAbilityNamesCache.clone();
@@ -45,7 +45,7 @@ public class EmpathyUnit extends UnitEntity implements PlayerAbilityUnit{
     @Override public int selectedPlayerAbility(){ return playerAbility; }
     @Override public void selectPlayerAbility(int index){ if(index >= 0 && index < playerAbilityNames().length) playerAbility = index; }
     @Override public String playerAbilityStatus(){
-        if(playerAttackActive && activeAttack instanceof CountDownAttack countdown) return "Count Down stage " + (countdown.count < 5 ? 5 - countdown.count : "finale") + ": casting. Use again after it finishes for the next stage.";
+        if(playerAttackActive && activeAttack instanceof CountDownAttack countdown) return "Count Down stage " + (countdown.count < 5 ? 5 - countdown.count : "finale") + ": casting. Later stages are selected automatically.";
         return playerStatus;
     }
     @Override public boolean nativePlayerWeapon(){ return !playerAttackActive; }
@@ -97,7 +97,8 @@ public class EmpathyUnit extends UnitEntity implements PlayerAbilityUnit{
     }
 
     @Override public void cancelPlayerAbility(){
-        playerAttackActive = playerMovementActive = playerWasShooting = false;
+        playerAttackActive = playerMovementActive = false;
+        playerAttackDelay = 0f;
         moves.clear();
         rotates.clear();
         trueVel.setZero();
@@ -109,9 +110,16 @@ public class EmpathyUnit extends UnitEntity implements PlayerAbilityUnit{
     private void updatePlayerAbilities(){
         // Native physics/input may already have moved us; sync the protected position store first.
         syncManualPosition();
+        FlameOutSFX.realDelta = Time.delta;
         updateNearby();
+        updateDamageTaken();
         for(EmpathyAI ai : attackAIs){ ai.updateSounds(); ai.updatePassive(); }
-        for(EmpathyAI ai : movementAIs) ai.updateSounds();
+        for(EmpathyAI ai : movementAIs){ ai.updateSounds(); ai.updatePassive(); }
+        if(nearbyBullets > 0) activeMovement.updateAutoParry();
+        playerAttackDelay = Math.max(0f, playerAttackDelay - Time.delta);
+        if(isShooting && getTarget() != null && !playerAttackActive && playerAttackDelay <= 0f){
+            choosePlayerAttack();
+        }
         if(playerAttackActive){
             if(!playerMovementActive || activeMovement.updateAttackAI()) activeAttack.update();
         }
@@ -127,14 +135,28 @@ public class EmpathyUnit extends UnitEntity implements PlayerAbilityUnit{
         if(queueParry){ parry(); queueParry = false; }
         if(parryTime > 0f) parryTime -= Time.delta;
         if(autoParryTime > 0f) autoParryTime -= Time.delta;
-        boolean pressed = isShooting && !playerWasShooting;
-        playerWasShooting = isShooting;
-        if(pressed && playerAbility > 0 && !playerAttackActive && !playerMovementActive) usePlayerAbility();
+
         if(!parryLasers.isEmpty()) parryLasers.removeAll(holder -> {
             holder.time -= Time.delta;
             return holder.time <= 0f || holder.b.id != holder.id;
         });
         updateTrail();
+    }
+
+    private void choosePlayerAttack(){
+        // Preserve the original eligibility/priority scores and usage penalties.
+        // Avoid repeating the previous pattern when another eligible attack is available.
+        randAI.clear();
+        for(EmpathyAI ai : attackAIs){
+            if(ai != activeAttack) randAI.add(ai, ai.weight() / (1f + ai.aiUsages / 2f));
+        }
+        EmpathyAI next = randAI.get();
+        if(next == null) next = attackAIs.first();
+        updateUsages(true);
+        if(activeAttack != null) activeAttack.aiUsages += activeAttack.aiUsages / 5f + 1f;
+        attackAIChanges++;
+        playerAbility = attackAIs.indexOf(next, true) + 1;
+        usePlayerAbility();
     }
 
     protected void transferPlayer(EmpathyUnit next){
@@ -1422,7 +1444,8 @@ public class EmpathyUnit extends UnitEntity implements PlayerAbilityUnit{
     void randAI(boolean attack, boolean quickSwap){
         if(isPlayer() && !isDecoy()){
             if(attack) playerAttackActive = false; else playerMovementActive = false;
-            playerStatus = "Pattern complete. Use again or select another ability.";
+            playerAttackDelay = 12f;
+            playerStatus = "Pattern complete. Automatic combat is ready.";
             return;
         }
         if(attack){

@@ -10,6 +10,7 @@ import mindustry.type.*;
 
 public class DespondencyUnit extends LegsUnit implements PlayerAbilityUnit{
     private int playerAbility;
+    private float playerFireTime, playerFinisherDelay;
     public boolean playerFinisher;
     private String playerStatus = "Primary fire controls all regular weapons; anti-air remains automatic.";
     @Override public String[] playerAbilityNames(){ return new String[]{"All regular weapons", "Full finisher (enemy unit)"}; }
@@ -44,6 +45,16 @@ public class DespondencyUnit extends LegsUnit implements PlayerAbilityUnit{
     @Override
     public void update(){
         if(!isPlayer() && playerFinisher) cancelPlayerAbility();
+        playerFinisherDelay = Math.max(0f, playerFinisherDelay - Time.delta);
+        if(isPlayer() && isShooting && PlayerTargets.enemy(this) instanceof Unit){
+            playerFireTime += Time.delta;
+            if(!playerFinisher && playerFireTime >= 180f && playerFinisherDelay <= 0f){
+                playerAbility = 1;
+                if(usePlayerAbility()) playerFinisherDelay = 30f * 60f;
+            }
+        }else{
+            playerFireTime = 0f;
+        }
         updateValues();
         super.update();
     }

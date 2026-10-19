@@ -16,7 +16,7 @@ public class YggdrasilUnit extends UnitEntity implements PlayerAbilityUnit{
     @Override public String[] playerAbilityNames(){ return new String[]{"Tentacle volley"}; }
     @Override public int selectedPlayerAbility(){ return 0; }
     @Override public void selectPlayerAbility(int index){}
-    @Override public String playerAbilityStatus(){ return playerVolleyShots > 0 ? "Tentacle volley active." : "Aim and hold primary fire, or use volley."; }
+    @Override public String playerAbilityStatus(){ return playerVolleyShots > 0 ? "Tentacle volley active." : "Aim and hold primary fire for tentacle attacks."; }
     @Override public boolean usePlayerAbility(){ if(!isPlayer()) return false; playerVolleyShots = tentacles.size; return true; }
     @Override public void cancelPlayerAbility(){ playerVolleyShots = 0; }
     Seq<YggdrasilLeg> legs = new Seq<>();

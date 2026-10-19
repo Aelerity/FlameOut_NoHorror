@@ -22,8 +22,8 @@ public class ApathyIUnit extends UnitEntity implements PlayerAbilityUnit{
     ShiftHandler current, last;
     private ApathyIAI lastAI, playerAI;
     private int playerAbility;
-    private boolean playerFiring, playerFormInit;
-    private String playerStatus = "Primary fire: laser. Select a form or sentry command.";
+    private boolean playerFiring, playerFormInit, playerAutomatic;
+    private String playerStatus = "Hold primary fire for automatic forms and original sentry reactions.";
     private static final String[] playerAbilities = {"Primary laser", "Prism / shield form", "Weak laser form", "Area burst form", "Sweep laser form", "Strong laser form", "Deploy sentries", "Recall sentries to repair"};
 
     @Override public String[] playerAbilityNames(){ return playerAbilities.clone(); }
@@ -61,7 +61,7 @@ public class ApathyIUnit extends UnitEntity implements PlayerAbilityUnit{
 
     @Override public void cancelPlayerAbility(){
         if(playerAI != null) playerAI.stopManual();
-        playerFiring = playerFormInit = false;
+        playerFiring = playerFormInit = playerAutomatic = false;
         playerStatus = "Ability stopped. Primary fire: laser.";
     }
 
@@ -202,7 +202,21 @@ public class ApathyIUnit extends UnitEntity implements PlayerAbilityUnit{
             current.update(this);
             current.updateShift(this, 1f, false);
         }
-        if(isPlayer() && playerAI != null){
+        if(isPlayer() && isShooting && PlayerTargets.enemy(this) != null){
+            if(playerAI == null){ playerAI = new ApathyIAI(); playerAI.unit(this); }
+            if(!playerAutomatic){
+                cancelPlayerAbility();
+                playerAutomatic = true;
+                playerAI.transformationTime = 0f;
+            }
+            // Use the original threat scores and form durations, without AI locomotion.
+            playerAI.updateUnit();
+            playerAbility = playerAI.currentTransformation + 1;
+            playerFiring = playerAI.currentTransformation != 0;
+        }else if(playerAutomatic){
+            cancelPlayerAbility();
+        }
+        if(isPlayer() && playerAI != null && !playerAutomatic){
             if(playerFormInit && !shifting){
                 playerAI.initManualForm();
                 playerFormInit = false;
