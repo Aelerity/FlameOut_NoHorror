@@ -227,7 +227,7 @@ public class ApathyBigLaserBulletType extends BulletType{
             FlameFX.shootShockWave.at(Tmp.v1.x, Tmp.v1.y, b.rotation(), 350f);
 
             FlameOutSFX.inst.impactFrames(b, b.x, b.y, b.rotation(), 23f, true);
-            Vars.renderer.shake(80f, 90f);
+            if(!Vars.headless) Vars.renderer.shake(80f, 90f);
         }
     }
 

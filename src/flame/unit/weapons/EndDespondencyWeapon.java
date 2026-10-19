@@ -183,7 +183,10 @@ public class EndDespondencyWeapon extends Weapon{
         DespondencyMount m = (DespondencyMount)mount;
 
         //boolean shoot = (mount.shoot || m.active) && unit.controller() instanceof DespondencyAI && ((mount.target instanceof Unit uu && uu.isValid()) || m.stage > 2);
-        boolean shoot = (mount.shoot || m.active) && unit.controller() instanceof DespondencyAI && (mount.target instanceof Unit uu && uu.isValid() || m.targetDestroyed);
+        boolean manual = unit instanceof DespondencyUnit des && des.isPlayer() && des.playerFinisher;
+        if(manual) m.activeTime += Time.delta;
+        boolean shoot = ((mount.shoot || m.active) && unit.controller() instanceof DespondencyAI || manual) &&
+            (mount.target instanceof Unit target && target.isValid() || m.targetDestroyed);
         if(shoot){
             m.time += Time.delta;
             for(DespondencyArm arm : arms){
@@ -231,6 +234,7 @@ public class EndDespondencyWeapon extends Weapon{
 
                             if(unit.controller() instanceof DespondencyAI ai) ai.endDeath();
                             //Log.info("des s4");
+                            if(unit instanceof DespondencyUnit des) des.playerFinisher = false;
                             mount.target = null;
                             return;
                         }
@@ -240,6 +244,7 @@ public class EndDespondencyWeapon extends Weapon{
             }
             if(m.finalActive) updateFinal(unit, m);
         }else{
+            if(unit instanceof DespondencyUnit des) des.playerFinisher = false;
             if(m.stage > 2){
                 endFinal(m);
                 if(unit.controller() instanceof DespondencyAI ai) ai.endDeathFailed();
@@ -336,7 +341,6 @@ public class EndDespondencyWeapon extends Weapon{
             spear.ty = v2.y;
             //spear.size *= Mathf.random(0.9f, 1.1f);
             spear.size *= 1f + sc / 8f;
-            spear.crySound = m.spears.isEmpty();
 
             if(m.lastSpear != null){
                 spear.last = m.lastSpear;
@@ -380,8 +384,6 @@ public class EndDespondencyWeapon extends Weapon{
                 batch.useAlt = false;
                 batch.resScale = 0.5f;
                 batch.islandScl = 0.075f;
-                batch.genGore = eff.hasInternal;
-                batch.goreColor = eff.internalColor;
                 batch.sound = eff.deathSound;
                 //batch.onDeathFunc = fragDeath;
                 batch.onDeathFunc = eff.fragDeath;
@@ -404,6 +406,15 @@ public class EndDespondencyWeapon extends Weapon{
             m.targetDestroyed = true;
         }
     }
+    public void cancelPlayerFinisher(DespondencyMount mount){
+        endFinal(mount);
+        mount.active = false;
+        mount.activeTime = mount.stageTime = mount.time = 0f;
+        mount.stage = 0;
+        mount.target = null;
+        mount.shoot = false;
+    }
+
     void endFinal(DespondencyMount m){
         m.spears.clear();
         m.finalTime = 0f;
@@ -526,31 +537,31 @@ public class EndDespondencyWeapon extends Weapon{
 
         float rad1 = 150f + fin * 150f;
         Lines.stroke(3f * fout);
-        EmpathySpawner.progressiveCircle(unit.x, unit.y, rad1, 90f, fin);
-        EmpathySpawner.progressiveCircle(unit.x, unit.y, rad1 / 3f, 180f, fin);
-        EmpathySpawner.progressiveStar(unit.x, unit.y, rad1 / 3f, Time.time * 0.15f, 7, 2, fin);
+        EnergyGeometry.progressiveCircle(unit.x, unit.y, rad1, 90f, fin);
+        EnergyGeometry.progressiveCircle(unit.x, unit.y, rad1 / 3f, 180f, fin);
+        EnergyGeometry.progressiveStar(unit.x, unit.y, rad1 / 3f, Time.time * 0.15f, 7, 2, fin);
         Lines.stroke(fout);
-        EmpathySpawner.progressiveCircle(unit.x, unit.y, rad1 - 5f, -90f, fin);
-        EmpathySpawner.progressiveCircle(unit.x, unit.y, rad1 / 2f, -90f, fin);
-        EmpathySpawner.progressiveStar(unit.x, unit.y, rad1 / 2f, Time.time * 0.15f, 9, 2, fin);
-        EmpathySpawner.progressiveStar(unit.x, unit.y, rad1 / 2f, Time.time * -0.15f, 4, 1, fin);
+        EnergyGeometry.progressiveCircle(unit.x, unit.y, rad1 - 5f, -90f, fin);
+        EnergyGeometry.progressiveCircle(unit.x, unit.y, rad1 / 2f, -90f, fin);
+        EnergyGeometry.progressiveStar(unit.x, unit.y, rad1 / 2f, Time.time * 0.15f, 9, 2, fin);
+        EnergyGeometry.progressiveStar(unit.x, unit.y, rad1 / 2f, Time.time * -0.15f, 4, 1, fin);
         Lines.stroke(3f * fout);
-        EmpathySpawner.progressiveStar(unit.x, unit.y, rad1, Time.time * 0.1f, 4, 1, fin);
-        EmpathySpawner.progressiveStar(unit.x, unit.y, rad1, -Time.time * 0.1f * 1.1f, 4, 1, fin);
+        EnergyGeometry.progressiveStar(unit.x, unit.y, rad1, Time.time * 0.1f, 4, 1, fin);
+        EnergyGeometry.progressiveStar(unit.x, unit.y, rad1, -Time.time * 0.1f * 1.1f, 4, 1, fin);
         
-        EmpathySpawner.progressiveStar(unit.x, unit.y, rad1, -90f, 3, 1, fin);
+        EnergyGeometry.progressiveStar(unit.x, unit.y, rad1, -90f, 3, 1, fin);
         for(int i = 0; i < 4; i++){
             //draw circles
             float ang = i * 90f + Time.time * 0.2f;
             Vec2 v = Tmp.v1.trns(ang, rad1).add(unit.x, unit.y);
             Lines.stroke(3f * fout);
-            EmpathySpawner.progressiveCircle(v.x, v.y, 90f, ang, fin);
-            EmpathySpawner.progressiveStar(v.x, v.y, 90f, -90f, 5, 2, fin);
+            EnergyGeometry.progressiveCircle(v.x, v.y, 90f, ang, fin);
+            EnergyGeometry.progressiveStar(v.x, v.y, 90f, -90f, 5, 2, fin);
             Lines.stroke(fout);
-            EmpathySpawner.progressiveCircle(v.x, v.y, 82f, ang, fin);
-            EmpathySpawner.progressiveStar(v.x, v.y, 82f, 0f, 4, 1, fin);
+            EnergyGeometry.progressiveCircle(v.x, v.y, 82f, ang, fin);
+            EnergyGeometry.progressiveStar(v.x, v.y, 82f, 0f, 4, 1, fin);
             Lines.stroke(fout * 0.75f);
-            EmpathySpawner.progressiveStar(v.x, v.y, 90f, 90f, 3, 1, fin);
+            EnergyGeometry.progressiveStar(v.x, v.y, 90f, 90f, 3, 1, fin);
 
             //Vec2 v = Tmp.v1.trns(ang, rad1).add(unit.x, unit.y);
             v.trns(ang, rad1 + 110f).add(unit.x, unit.y);

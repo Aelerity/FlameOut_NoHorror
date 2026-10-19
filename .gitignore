@@ -156,3 +156,6 @@ Thumbs.db
 android/libs/
 
 photoshop/
+
+# Local compatibility runtime and portable JDK
+.validation/

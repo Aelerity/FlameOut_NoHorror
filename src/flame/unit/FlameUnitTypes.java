@@ -1,6 +1,9 @@
 package flame.unit;
 
 import flame.unit.shifts.*;
+import flame.unit.weapons.*;
+import flame.bullets.*;
+import mindustry.ai.types.*;
 import mindustry.ai.*;
 import mindustry.content.*;
 import mindustry.gen.*;
@@ -16,7 +19,7 @@ public class FlameUnitTypes{
             flying = true;
             hitSize = 75;
             drag = 0.06f;
-            //playerControllable = logicControllable = false;
+            weapons.add(new PlayerWeapon(FlameBullets.sentryLaser, 30f));
             
             handlers.add(new PrismShift("apathy"));
             handlers.add(new WeakLaserShift("apathy-weak-laser"));
@@ -36,14 +39,21 @@ public class FlameUnitTypes{
         }};
         apathySentry = new UnitType("apathy-sweep-0"){{
             outlines = false;
-            hidden = true;
+            hidden = false;
+            speed = 3f;
+            weapons.add(new PlayerWeapon(FlameBullets.sentryLaser, 30f){
+                @Override
+                protected boolean enabled(Unit unit){
+                    return unit.isPlayer() || ((ApathySentryUnit)unit).owner == null;
+                }
+            });
             useUnitCap = false;
 
             health = 9000f;
             drag = 0.5f;
             hitSize = 10f;
 
-            controller = unit -> new NullAI();
+            controller = unit -> new FlyingAI();
             constructor = ApathySentryUnit::new;
 
             fallEffect = fallEngineEffect = Fx.none;
@@ -78,5 +88,17 @@ public class FlameUnitTypes{
         }};
 
         despondency = new DespondencyUnitType("despondency");
+        // These flags also expose every unit in the editor and content selection dialogs.
+        for(UnitType type : new UnitType[]{apathy, apathySentry, empathy, yggdrasil, despondency}){
+            type.hidden = false;
+            type.internal = false;
+            type.alwaysUnlocked = true;
+            type.playerControllable = true;
+        }
+        apathy.localizedName = "Apathy";
+        apathySentry.localizedName = "Apathy Sentry";
+        empathy.localizedName = "Empathy";
+        yggdrasil.localizedName = "Yggdrasil";
+        despondency.localizedName = "Despondency";
     }
 }

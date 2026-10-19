@@ -20,8 +20,8 @@ public class FragmentationBatch extends Batch{
     public Cons<Fragmentation> fragDataFunc = null;
     public AltFragFunc altFunc = (x, y, tex) -> {};
     public Effect trailEffect, explosionEffect;
-    public Color fragColor = Color.white, goreColor = Pal.darkerMetal;
-    public boolean useAlt = true, genGore = false;
+    public Color fragColor = Color.white;
+    public boolean useAlt = true;
     public float resScale = 1f, islandScl = 1f;
     public Sound sound = null;
     //public Floatc2 altFunc = (x, y) -> {};
@@ -51,20 +51,10 @@ public class FragmentationBatch extends Batch{
         fragDataFunc = null;
         useAlt = true;
         resScale = islandScl = 1f;
-        genGore = false;
-        goreColor = Pal.darkerMetal;
         sound = null;
     }
 
 
-    @Override
-    protected void setMixColor(Color tint){
-
-    }
-    @Override
-    protected void setMixColor(float r, float g, float b, float a){
-
-    }
     @Override
     protected void setPackedMixColor(float packedColor){
 
@@ -77,7 +67,7 @@ public class FragmentationBatch extends Batch{
 
     @Override
     protected void draw(TextureRegion region, float x, float y, float originX, float originY, float width, float height, float rotation){
-        if(color.a <= 0.9f || region == updateCircle() || blending != Blending.normal || region == Core.atlas.white() || !region.found()) return;
+        if((Color.floatToIntColor(colorPacked) >>> 24) <= 229 || region == updateCircle() || blending != Blending.normal || region == Core.atlas.white() || !region.found()) return;
 
         //int dim = Math.max(region.width, region.height);
         float dim = Math.max(width, height) / Draw.scl;
@@ -106,12 +96,8 @@ public class FragmentationBatch extends Batch{
         //float by = (sin * dx + cos * dy) + (y + Math.abs(midX * sin + midY * cos));
 
         if(dim >= (4 * 32) || !useAlt){
-            Fragmentation frag = Fragmentation.generate(bx, by, rotation, width, height, z, baseElevation, resScale, islandScl, region, genGore ? fr -> {
-                fragFunc.get(fr);
-                fr.generateGore();
-            } : fragFunc);
-            frag.drawnColor.set(color);
-            if(genGore) frag.goreColor.set(goreColor);
+            Fragmentation frag = Fragmentation.generate(bx, by, rotation, width, height, z, baseElevation, resScale, islandScl, region, fragFunc);
+            frag.drawnColor.abgr8888(colorPacked);
             if(trailEffect != null) frag.trailEffect = trailEffect;
             if(explosionEffect != null) frag.explosionEffect = explosionEffect;
             if(sound != null) frag.explosionSound = sound;

@@ -10,7 +10,28 @@ import mindustry.gen.*;
 import mindustry.graphics.*;
 import mindustry.type.*;
 
-public class ApathySentryUnit extends UnitEntity{
+public class ApathySentryUnit extends UnitEntity implements PlayerAbilityUnit{
+    private int playerAbility;
+    private float manualHealTime;
+    private ApathyIUnit manualHealTarget;
+    private String playerStatus = "Primary fire: laser. Aim at friendly Apathy to repair.";
+    @Override public String[] playerAbilityNames(){ return new String[]{"Laser", "Repair allied Apathy"}; }
+    @Override public int selectedPlayerAbility(){ return playerAbility; }
+    @Override public void selectPlayerAbility(int index){ if(index >= 0 && index < 2) playerAbility = index; }
+    @Override public String playerAbilityStatus(){ return playerStatus; }
+    @Override public boolean usePlayerAbility(){
+        if(!isPlayer()) return false;
+        if(playerAbility == 0){ playerStatus = "Hold primary fire to shoot the laser."; return true; }
+        if(manualHealTime > 0f){ playerStatus = "Repair is already charging."; return false; }
+        ApathyIUnit target = PlayerTargets.friendlyApathy(this);
+        if(target == null && owner != null && owner.isValid() && owner.team == team) target = owner;
+        if(target == null){ playerStatus = "Aim at an allied Apathy."; return false; }
+        manualHealTarget = target;
+        manualHealTime = 180f;
+        playerStatus = "Repair charging (3 seconds).";
+        return true;
+    }
+    @Override public void cancelPlayerAbility(){ manualHealTime = 0f; manualHealTarget = null; playerStatus = "Repair stopped."; }
     float moveX, moveY, moveTime;
     Teamc target;
     float reload = 0f;
@@ -35,7 +56,23 @@ public class ApathySentryUnit extends UnitEntity{
     public void update(){
         super.update();
         
-        if(owner == null || !owner.isValid()){
+        if(isPlayer()){
+            if(manualHealTime > 0f){
+                if(manualHealTarget == null || !manualHealTarget.isValid() || manualHealTarget.team != team){ cancelPlayerAbility(); }
+                else{
+                    manualHealTime -= Time.delta;
+                    if(manualHealTime <= 0f){
+                        manualHealTarget.heal(manualHealTarget.maxHealth / 20f);
+                        playerStatus = "Apathy repaired.";
+                    }
+                }
+            }
+            return;
+        }
+        if(manualHealTarget != null) cancelPlayerAbility();
+        if(owner == null) return;
+
+        if(!owner.isValid()){
             destroy();
             return;
         }
@@ -66,7 +103,7 @@ public class ApathySentryUnit extends UnitEntity{
                         reload -= Time.delta;
                         if(reload <= 0f){
                             Tmp.v1.trns(rotation, hitSize / 1.5f).add(x, y);
-                            Sounds.laser.at(Tmp.v1);
+                            Sounds.shootLaser.at(Tmp.v1);
                             FlameBullets.sentryLaser.create(this, Tmp.v1.x, Tmp.v1.y, rotation);
                         }
                     }
@@ -85,7 +122,6 @@ public class ApathySentryUnit extends UnitEntity{
     @Override
     public void destroy(){
         super.destroy();
-        BloodSplatter.explosion(20, x, y, hitSize / 2, 80f, 35f);
     }
 
     @Override
@@ -97,7 +133,12 @@ public class ApathySentryUnit extends UnitEntity{
         type.drawSoftShadow(this);
         //Draw.color(Pal.shadow);
         //Draw.rect(r, x + UnitType.shadowTX, y + UnitType.shadowTY, r.width * Draw.scl * 0.5f, r.height * Draw.scl * 0.5f, rotation - 90f);
-        if(healDelay > 0){
+        if(manualHealTime > 0f && manualHealTarget != null){
+            Draw.color(Pal.heal);
+            Lines.stroke(2f);
+            Lines.line(x, y, manualHealTarget.x, manualHealTarget.y);
+        }
+        if(healDelay > 0 && owner != null){
             Draw.color(Pal.heal);
             Lines.stroke(3f * healFade * (1f + Mathf.absin(1f, 0.5f)));
             Lines.line(x, y, owner.x, owner.y);

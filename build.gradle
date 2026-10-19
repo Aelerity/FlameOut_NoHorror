@@ -1,95 +1,96 @@
-apply plugin: "java"
-
-version '1.0'
-
-targetCompatibility = 8
-sourceCompatibility = JavaVersion.VERSION_16
-
-sourceSets.main.java.srcDirs = ["src"]
-
-repositories{
-    mavenCentral()
-    maven{ url 'https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository' }
-    maven{ url 'https://www.jitpack.io' }
+plugins{
+    id 'java'
 }
 
-ext{
-    //the build number that this mod is made for
-    mindustryVersion = 'v146'
-    jabelVersion = "93fde537c7"
-    sdkRoot = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+version = '1.3.1'
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
+
+sourceSets{
+    main.java.srcDirs = ['src']
+    test.java.srcDirs = ['tests']
 }
 
-//java 8 backwards compatibility flag
-allprojects{
-    tasks.withType(JavaCompile){
-        options.compilerArgs.addAll(['--release', '8'])
-    }
-}
+// Compile against the oldest verified game; test that same mod on both releases.
+// The game is compile/test-only and must never be bundled into the mod.
+def gameVersion = '160.5'
+def newerGameVersion = '160.7'
+def gameHashes = [
+    '160.5': '0bd327c6c3d551e7e8fdab7b695517f809baacca3b1f5cb1c1a8dd74836620e0',
+    '160.7': 'f7b899a4038b95b14a824d5f8993984f79d73baa3254c385b6538327f9c0befd'
+]
+def gameJar = providers.gradleProperty('mindustryJar').map { file(it) }
+    .orElse(layout.buildDirectory.file("dependencies/server-v${gameVersion}.jar").map { it.asFile })
+def newerGameJar = providers.gradleProperty('newerMindustryJar').map { file(it) }
+    .orElse(layout.buildDirectory.file("dependencies/server-v${newerGameVersion}.jar").map { it.asFile })
 
-dependencies{
-    compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
-    compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
-
-    annotationProcessor "com.github.Anuken:jabel:$jabelVersion"
-}
-
-//force arc version
-configurations.all{
-    resolutionStrategy.eachDependency { details ->
-        if(details.requested.group == 'com.github.Anuken.Arc'){
-            details.useVersion "$mindustryVersion"
+def registerGameDownload = { String taskName, String targetVersion, targetJar ->
+tasks.register(taskName){
+    inputs.property('mindustryVersion', targetVersion)
+    outputs.file(targetJar)
+    doLast{
+        def target = targetJar.get()
+        if(!target.exists()){
+            target.parentFile.mkdirs()
+            new URL("https://github.com/Anuken/Mindustry/releases/download/v${targetVersion}/server-release.jar").withInputStream { input ->
+                target.withOutputStream { output -> output << input }
+            }
+        }
+        def actual = java.security.MessageDigest.getInstance('SHA-256').digest(target.bytes).encodeHex().toString()
+        if(actual != gameHashes[targetVersion]){
+            throw new GradleException("Mindustry v${targetVersion} dependency checksum mismatch: " + actual)
         }
     }
 }
+}
+registerGameDownload('downloadMindustry', gameVersion, gameJar)
+registerGameDownload('downloadNewerMindustry', newerGameVersion, newerGameJar)
 
-task jarAndroid{
-    dependsOn "jar"
+dependencies{
+    compileOnly files(gameJar).builtBy('downloadMindustry')
+    testImplementation files(gameJar).builtBy('downloadMindustry')
+}
 
-    doLast{
-        if(!sdkRoot || !new File(sdkRoot).exists()) throw new GradleException("No valid Android SDK found. Ensure that ANDROID_HOME is set to your Android SDK directory.");
-
-        def platformRoot = new File("$sdkRoot/platforms/").listFiles().sort().reverse().find{ f -> new File(f, "android.jar").exists()}
-
-        if(!platformRoot) throw new GradleException("No android.jar found. Ensure that you have an Android platform installed.")
-
-        //collect dependencies needed for desugaring
-        def dependencies = (configurations.compileClasspath.asList() + configurations.runtimeClasspath.asList() + [new File(platformRoot, "android.jar")]).collect{ "--classpath $it.path" }.join(" ")
-
-        //dex and desugar files - this requires d8 in your PATH
-        "d8 $dependencies --min-api 14 --output ${project.archivesBaseName}Android.jar ${project.archivesBaseName}Desktop.jar"
-            .execute(null, new File("$buildDir/libs")).waitForProcessOutput(System.out, System.err)
-    }
+tasks.withType(JavaCompile).configureEach{
+    options.encoding = 'UTF-8'
+    options.release = 17
 }
 
 jar{
-    archiveFileName = "${project.archivesBaseName}Desktop.jar"
-
-    from{
-        configurations.runtimeClasspath.collect{ it.isDirectory() ? it : zipTree(it) }
-    }
-
+    archiveFileName = 'FlameOut_NoHorror.jar'
+    includeEmptyDirs = false
     from(rootDir){
-        include "mod.json"
-        include "icon.png"
+        include 'mod.json', 'icon.png'
     }
-
-    from("assets/"){
-        include "**"
+    from('assets/'){
+        include '**'
     }
 }
 
-task deploy(type: Jar){
-    dependsOn jarAndroid
-    dependsOn jar
-    archiveFileName = "${project.archivesBaseName}.jar"
+tasks.register('verifyMod', JavaExec){
+    dependsOn testClasses, jar
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'flame.CompatibilityTest'
+    systemProperty 'mod.jar', tasks.jar.archiveFile.get().asFile.absolutePath
+    systemProperty 'mindustry.version', gameVersion
+    workingDir = layout.buildDirectory.dir('verification').get().asFile
+    doFirst{ workingDir.mkdirs() }
+}
 
-    from{ [zipTree("$buildDir/libs/${project.archivesBaseName}Desktop.jar"), zipTree("$buildDir/libs/${project.archivesBaseName}Android.jar")] }
+// Test the exact same compiled JAR on the newer game, without recompiling it.
+tasks.register('verifyNewerMod', JavaExec){
+    dependsOn testClasses, jar, downloadNewerMindustry
+    classpath = files(sourceSets.test.output, newerGameJar)
+    mainClass = 'flame.CompatibilityTest'
+    systemProperty 'mod.jar', tasks.jar.archiveFile.get().asFile.absolutePath
+    systemProperty 'mindustry.version', newerGameVersion
+    workingDir = layout.buildDirectory.dir('verification-newer').get().asFile
+    doFirst{ workingDir.mkdirs() }
+}
 
-    doLast{
-        delete{
-            delete "$buildDir/libs/${project.archivesBaseName}Desktop.jar"
-            delete "$buildDir/libs/${project.archivesBaseName}Android.jar"
-        }
-    }
+check.dependsOn verifyMod, verifyNewerMod
+
+// Retain the existing desktop build command. Android is not a supported target.
+tasks.register('deploy'){
+    dependsOn build
 }

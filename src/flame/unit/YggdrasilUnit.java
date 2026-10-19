@@ -11,7 +11,14 @@ import mindustry.entities.EntityCollisions.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
 
-public class YggdrasilUnit extends UnitEntity{
+public class YggdrasilUnit extends UnitEntity implements PlayerAbilityUnit{
+    private int playerVolleyShots;
+    @Override public String[] playerAbilityNames(){ return new String[]{"Tentacle volley"}; }
+    @Override public int selectedPlayerAbility(){ return 0; }
+    @Override public void selectPlayerAbility(int index){}
+    @Override public String playerAbilityStatus(){ return playerVolleyShots > 0 ? "Tentacle volley active." : "Aim and hold primary fire, or use volley."; }
+    @Override public boolean usePlayerAbility(){ if(!isPlayer()) return false; playerVolleyShots = tentacles.size; return true; }
+    @Override public void cancelPlayerAbility(){ playerVolleyShots = 0; }
     Seq<YggdrasilLeg> legs = new Seq<>();
     Seq<YggdrasilTentacle> tentacles = new Seq<>();
     int group;
@@ -27,10 +34,6 @@ public class YggdrasilUnit extends UnitEntity{
         return EntityCollisions::legsSolid;
     }
 
-    @Override
-    public int pathType(){
-        return Pathfinder.costLegs;
-    }
 
     @Override
     public void update(){
@@ -80,11 +83,18 @@ public class YggdrasilUnit extends UnitEntity{
 
         super.update();
 
+        float volleyX = aimX, volleyY = aimY;
+        if(isPlayer() && playerVolleyShots > 0){
+            var cursor = PlayerTargets.aim(this, Tmp.v4);
+            volleyX = cursor.x;
+            volleyY = cursor.y;
+        }
         for(YggdrasilTentacle t : tentacles){
-            t.updateTargetPosition(aimX, aimY);
+            t.updateTargetPosition(volleyX, volleyY);
             t.update(this);
         }
-        if(isShooting){
+        if(!isPlayer()) playerVolleyShots = 0;
+        if(isShooting || (isPlayer() && playerVolleyShots > 0)){
             /*
             for(YggdrasilTentacle t : tentacles){
                 t.shoot(aimX, aimY);
@@ -92,7 +102,8 @@ public class YggdrasilUnit extends UnitEntity{
             */
             YggdrasilTentacle t = tentacles.get(tentacleIdx);
             if(tentacleReload <= 0f && t.canShoot()){
-                t.shoot(aimX, aimY);
+                t.shoot(volleyX, volleyY);
+                if(playerVolleyShots > 0) playerVolleyShots--;
 
                 tentacleIdx = (tentacleIdx + 1) % tentacles.size;
                 tentacleReload = 140f / tentacles.size + 3f;

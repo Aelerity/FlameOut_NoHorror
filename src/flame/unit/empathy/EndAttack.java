@@ -49,7 +49,6 @@ public class EndAttack extends AttackAI{
 
     EndAttack(){
         super();
-        addSoundConstant(FlameSounds.screams);
     }
 
     @Override
@@ -196,18 +195,6 @@ public class EndAttack extends AttackAI{
             }
         }
         endScanTimer -= Time.delta;
-        
-        PassiveSoundLoop sound = sounds.get(0);
-        float pdst = Mathf.dst(unit.x, unit.y, Core.camera.position.x, Core.camera.position.y);
-        //Tmp.v4.set(Core.camera.position).sub(unit.x, unit.y).setLength(size).add(unit.x, unit.y);
-
-        //float pan = sound.calcPan(Tmp.v4.x, Tmp.v4.y);
-        float sfin = 1f - Mathf.curve(Mathf.clamp(endTime / (7f * 60f)), 0.5f, 1f);
-        //float fall = (1f - Mathf.clamp(Math.abs(pdst - size) / 100000f)) * sfin * Mathf.clamp((size - 100f) / 100f);
-        float fall = (1f - Mathf.clamp(pdst > size ? ((pdst - size) / 800f) : (-(pdst - size) / 100000f))) * sfin * Mathf.clamp((size - 100f) / 100f);
-        if(fall > 0.0001f){
-            sound.play(unit.x, unit.y, fall, 0f, true);
-        }
         
         for(int i = 0; i < s; i += 5){
             float x = ar[i];

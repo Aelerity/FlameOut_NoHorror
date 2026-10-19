@@ -10,6 +10,7 @@ import flame.*;
 import flame.effects.*;
 import flame.entities.*;
 import flame.graphics.*;
+import flame.unit.*;
 import mindustry.*;
 import mindustry.ai.types.*;
 import mindustry.entities.bullet.*;
@@ -19,7 +20,130 @@ import mindustry.game.Teams.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
 
-public class EmpathyUnit extends UnitEntity{
+public class EmpathyUnit extends UnitEntity implements PlayerAbilityUnit{
+    private int playerAbility;
+    private boolean playerAttackActive, playerMovementActive;
+    private boolean playerWasShooting;
+    private String[] playerAbilityNamesCache;
+    private String playerStatus = "Select an attack, movement skill, parry or duplication.";
+
+    @Override public String[] playerAbilityNames(){
+        if(playerAbilityNamesCache != null && playerAbilityNamesCache.length == 1 + attackAIs.size + movementAIs.size + 2) return playerAbilityNamesCache.clone();
+        String[] names = new String[1 + attackAIs.size + movementAIs.size + 2];
+        names[0] = "Primary pins";
+        for(int i = 0; i < attackAIs.size; i++) names[i + 1] = "Attack: " + abilityName(attackAIs.get(i));
+        for(int i = 0; i < movementAIs.size; i++) names[1 + attackAIs.size + i] = "Movement: " + abilityName(movementAIs.get(i));
+        names[names.length - 2] = "Parry / reflect";
+        names[names.length - 1] = "Duplicate / decoy";
+        playerAbilityNamesCache = names;
+        return names.clone();
+    }
+
+    private String abilityName(EmpathyAI ai){
+        return ai.getClass().getSimpleName().replace("Attack", "").replace("Move", "").replaceAll("([a-z])([A-Z])", "$1 $2");
+    }
+    @Override public int selectedPlayerAbility(){ return playerAbility; }
+    @Override public void selectPlayerAbility(int index){ if(index >= 0 && index < playerAbilityNames().length) playerAbility = index; }
+    @Override public String playerAbilityStatus(){
+        if(playerAttackActive && activeAttack instanceof CountDownAttack countdown) return "Count Down stage " + (countdown.count < 5 ? 5 - countdown.count : "finale") + ": casting. Use again after it finishes for the next stage.";
+        return playerStatus;
+    }
+    @Override public boolean nativePlayerWeapon(){ return !playerAttackActive; }
+    @Override public boolean usePlayerAbility(){
+        if(!isPlayer() || !initialized) return false;
+        String label = playerAbilityNames()[playerAbility];
+        int attackIndex = playerAbility - 1;
+        int movementIndex = attackIndex - attackAIs.size;
+        if(playerAbility == 0){ playerStatus = "Hold primary fire for pins."; return true; }
+        if(attackIndex < attackAIs.size){
+            EmpathyAI attack = attackAIs.get(attackIndex);
+            if(attack instanceof CopyAttack && attack.weight() <= 0f){
+                playerStatus = "Copy requires an enemy unit with weapons under the cursor.";
+                return false;
+            }
+            if(activeAttack != null){ activeAttack.end(); activeAttack.endOnce(); activeAttack.stopSounds(); }
+            activeAttack = attack;
+            activeAttack.quickSwap = false;
+            activeAttack.reset();
+            activeAttack.init();
+            playerAttackActive = true;
+        }else if(movementIndex < movementAIs.size){
+            EmpathyAI movement = movementAIs.get(movementIndex);
+            if(!playerAttackActive) activeAttack = attackAIs.first();
+            if(movement instanceof RandomTeleport && !activeAttack.canTeleport()){
+                playerStatus = "Finish or cancel the current cast before teleporting.";
+                return false;
+            }
+            if(activeMovement != null){ activeMovement.end(); activeMovement.endOnce(); activeMovement.stopSounds(); }
+            activeMovement = movementAIs.get(movementIndex);
+            activeMovement.quickSwap = false;
+            activeMovement.reset();
+            activeMovement.init();
+            if(activeMovement instanceof RandomTeleport teleport){
+                teleport.teleportTime = teleport.delay = 0f;
+                teleport.teleport = 0;
+            }
+            activeMovement.setTarget(getTarget());
+            playerMovementActive = true;
+            if(activeMovement instanceof TeleSwapMove teleport) teleport.onSwap();
+        }else if(movementIndex == movementAIs.size){
+            rotation = PlayerTargets.angle(this);
+            parry();
+        }else{
+            duplicate();
+        }
+        playerStatus = label + " activated.";
+        return true;
+    }
+
+    @Override public void cancelPlayerAbility(){
+        playerAttackActive = playerMovementActive = playerWasShooting = false;
+        moves.clear();
+        rotates.clear();
+        trueVel.setZero();
+        for(EmpathyAI ai : attackAIs){ ai.end(); ai.endOnce(); ai.reset(); ai.stopSounds(); }
+        for(EmpathyAI ai : movementAIs){ ai.end(); ai.endOnce(); ai.reset(); ai.stopSounds(); }
+        playerStatus = "Abilities stopped. Normal movement and primary pins.";
+    }
+
+    private void updatePlayerAbilities(){
+        // Native physics/input may already have moved us; sync the protected position store first.
+        syncManualPosition();
+        updateNearby();
+        for(EmpathyAI ai : attackAIs){ ai.updateSounds(); ai.updatePassive(); }
+        for(EmpathyAI ai : movementAIs) ai.updateSounds();
+        if(playerAttackActive){
+            if(!playerMovementActive || activeMovement.updateAttackAI()) activeAttack.update();
+        }
+        if(playerMovementActive) activeMovement.update();
+        float inputVX = vel.x, inputVY = vel.y;
+        applyQueuedMovement();
+        updateTrueValues();
+        vel.set(inputVX, inputVY);
+        super.update();
+        syncManualPosition();
+        updateSpc();
+        updateDecoyDelay();
+        if(queueParry){ parry(); queueParry = false; }
+        if(parryTime > 0f) parryTime -= Time.delta;
+        if(autoParryTime > 0f) autoParryTime -= Time.delta;
+        boolean pressed = isShooting && !playerWasShooting;
+        playerWasShooting = isShooting;
+        if(pressed && playerAbility > 0 && !playerAttackActive && !playerMovementActive) usePlayerAbility();
+        if(!parryLasers.isEmpty()) parryLasers.removeAll(holder -> {
+            holder.time -= Time.delta;
+            return holder.time <= 0f || holder.b.id != holder.id;
+        });
+        updateTrail();
+    }
+
+    protected void transferPlayer(EmpathyUnit next){
+        if(!isPlayer()) return;
+        Player controlling = (Player)controller;
+        next.playerAbility = playerAbility;
+        controlling.unit(next);
+    }
+
     Seq<EmpathyAI> movementAIs = new Seq<>(), attackAIs = new Seq<>();
     EmpathyAI activeMovement, activeAttack;
     int attackAIChanges = 0;
@@ -74,7 +198,7 @@ public class EmpathyUnit extends UnitEntity{
     private final static float chainLifetime = 17f;
     private final static Rect scanRect = new Rect();
 
-    static EmpathyUnit createUnit(){
+    public static EmpathyUnit createUnit(){
         return createUnit(null);
     }
 
@@ -141,6 +265,14 @@ public class EmpathyUnit extends UnitEntity{
                     d[istunCount]++;
                     d[istunTimer] = 120f;
                 }
+            }
+
+            @Override
+            protected void syncManualPosition(){
+                super.syncManualPosition();
+                d[ix] = x;
+                d[iy] = y;
+                d[ir] = rotation;
             }
 
             @Override
@@ -337,7 +469,6 @@ public class EmpathyUnit extends UnitEntity{
                 EmpathyUnit u1 = createUnit(o);
                 u1.setType(type);
                 //u1.team = tm[0];
-                u1.ammo = type.ammoCapacity;
                 u1.elevation = 1f;
                 u1.copyFields(this);
                 u1.team = tm[0];
@@ -354,6 +485,7 @@ public class EmpathyUnit extends UnitEntity{
 
                 u1.add();
                 EmpathyDamage.onDuplicate(this, u1);
+                transferPlayer(u1);
 
                 return u1;
             }
@@ -376,6 +508,10 @@ public class EmpathyUnit extends UnitEntity{
 
     @Override
     public void update(){
+        if(isPlayer()){
+            updatePlayerAbilities();
+            return;
+        }
         float lastDelta = Time.delta;
         FlameOutSFX.realDelta = Time.delta;
         Time.delta = FlameOutSFX.timeDelta;
@@ -387,78 +523,7 @@ public class EmpathyUnit extends UnitEntity{
             ai.updateSounds();
         }
 
-        if(!moves.isEmpty()){
-            float max = -1f;
-            int idx = -1;
-            int idx2 = -1;
-            float[] ar = moves.items;
-            for(int i = 0; i < moves.size; i += 4){
-                if(ar[i] > max){
-                    max = ar[i];
-                    idx2 = idx;
-                    idx = i;
-                }
-            }
-            if(idx != -1){
-                float mx = ar[idx + 2];
-                float my = ar[idx + 3];
-
-                /*
-                if(ar[idx + 1] == 0){
-                    moveVelocity(mx, my);
-                }else{
-                    moveFixed(mx, my);
-                }
-                 */
-                if(!Float.isNaN(mx) && !Float.isNaN(my)){
-                    switch((int)ar[idx + 1]){
-                        case 0 -> moveVelocity(mx, my);
-                        case 1 -> moveFixed(mx, my);
-                        case 2 -> moveFixedSlow(mx, my);
-                        case 3 -> {
-                            if(idx2 != -1){
-                                float mx2 = ar[idx2 + 2];
-                                float my2 = ar[idx2 + 3];
-
-                                switch((int)ar[idx2 + 1]){
-                                    case 0 -> moveVelocity(mx2 * mx, mx2 * my);
-                                    case 1 -> moveFixed(mx2 * mx, my2 * my);
-                                    case 2 -> moveFixedSlow(mx2 * mx, my2 * my);
-                                }
-                            }
-                        }
-                        case 4 -> {
-                            moveFixed(mx, my);
-                            trailX = x;
-                            trailY = y;
-                        }
-                    }
-                }
-            }
-            moves.clear();
-        }
-        if(!rotates.isEmpty()){
-            float max = -1f;
-            int idx = -1;
-            float[] ar = rotates.items;
-            for(int i = 0; i < rotates.size; i += 3){
-                if(ar[i] > max){
-                    max = ar[i];
-                    idx = i;
-                }
-            }
-            if(idx != -1){
-                float angle = ar[idx + 1];
-                float speed = ar[idx + 2];
-
-                if(angle == angle){
-                    if(speed >= 360f) ltrot = angle;
-
-                    trueRotateTo(angle, speed);
-                }
-            }
-            rotates.clear();
-        }
+        applyQueuedMovement();
 
         if(!isDecoy()){
             updateTrueValues();
@@ -542,6 +607,82 @@ public class EmpathyUnit extends UnitEntity{
         }
     }
 
+    private void applyQueuedMovement(){
+        if(!moves.isEmpty()){
+            float max = -1f;
+            int idx = -1;
+            int idx2 = -1;
+            float[] ar = moves.items;
+            for(int i = 0; i < moves.size; i += 4){
+                if(ar[i] > max){
+                    max = ar[i];
+                    idx2 = idx;
+                    idx = i;
+                }
+            }
+            if(idx != -1){
+                float mx = ar[idx + 2];
+                float my = ar[idx + 3];
+
+                /*
+                if(ar[idx + 1] == 0){
+                    moveVelocity(mx, my);
+                }else{
+                    moveFixed(mx, my);
+                }
+                 */
+                if(!Float.isNaN(mx) && !Float.isNaN(my)){
+                    switch((int)ar[idx + 1]){
+                        case 0 -> moveVelocity(mx, my);
+                        case 1 -> moveFixed(mx, my);
+                        case 2 -> moveFixedSlow(mx, my);
+                        case 3 -> {
+                            if(idx2 != -1){
+                                float mx2 = ar[idx2 + 2];
+                                float my2 = ar[idx2 + 3];
+
+                                switch((int)ar[idx2 + 1]){
+                                    case 0 -> moveVelocity(mx2 * mx, mx2 * my);
+                                    case 1 -> moveFixed(mx2 * mx, my2 * my);
+                                    case 2 -> moveFixedSlow(mx2 * mx, my2 * my);
+                                }
+                            }
+                        }
+                        case 4 -> {
+                            moveFixed(mx, my);
+                            trailX = x;
+                            trailY = y;
+                        }
+                    }
+                }
+            }
+            moves.clear();
+        }
+        if(!rotates.isEmpty()){
+            float max = -1f;
+            int idx = -1;
+            float[] ar = rotates.items;
+            for(int i = 0; i < rotates.size; i += 3){
+                if(ar[i] > max){
+                    max = ar[i];
+                    idx = i;
+                }
+            }
+            if(idx != -1){
+                float angle = ar[idx + 1];
+                float speed = ar[idx + 2];
+
+                if(angle == angle){
+                    if(speed >= 360f) ltrot = angle;
+
+                    trueRotateTo(angle, speed);
+                }
+            }
+            rotates.clear();
+        }
+
+    }
+
     void updateDecoyDelay(){
         if(decoyDelay > 0) decoyDelay -= Time.delta;
     }
@@ -592,6 +733,7 @@ public class EmpathyUnit extends UnitEntity{
     }
 
     Teamc getTarget(){
+        if(isPlayer()) return PlayerTargets.enemy(this);
         if(activeMovement == null) return null;
         return activeMovement.getTarget();
     }
@@ -651,6 +793,19 @@ public class EmpathyUnit extends UnitEntity{
         }
         nearbyScan -= Time.delta;
     }
+    @Override
+    public void controller(UnitController next){
+        if(controller != next && (controller instanceof Player || next instanceof Player)) cancelPlayerAbility();
+        super.controller(next);
+        trueController = controller;
+    }
+
+    protected void syncManualPosition(){
+        tx = x;
+        ty = y;
+        trot = rotation;
+    }
+
     protected void updateTrueValues(){
         if(stunTimer <= 0f){
             tx += trueVel.x * Time.delta;
@@ -812,6 +967,15 @@ public class EmpathyUnit extends UnitEntity{
 
     @Override
     public void draw(){
+        if(isPlayer()){
+            boolean hidden = (playerAttackActive && activeAttack.overrideDraw()) || (playerMovementActive && activeMovement.overrideDraw());
+            if(!hidden) super.draw();
+            if(playerMovementActive && activeMovement.shouldDraw()) activeMovement.draw();
+            for(EmpathyAI ai : attackAIs){
+                if(ai.shouldDraw() && (playerAttackActive || ai != activeAttack || ai instanceof CopyAttack || ai instanceof SwordBarrageAttack)) ai.draw();
+            }
+            return;
+        }
         boolean drawUnit = true;
 
         for(EmpathyAI ai : attackAIs){
@@ -1188,7 +1352,6 @@ public class EmpathyUnit extends UnitEntity{
         EmpathyUnit u = new EmpathyUnit();
         u.team = team;
         u.setType(type);
-        u.ammo = type.ammoCapacity;
         u.elevation = 1f;
         u.copyFields(this);
         u.decoyDelay = 2f * 60;
@@ -1205,6 +1368,7 @@ public class EmpathyUnit extends UnitEntity{
 
         u.add();
         EmpathyDamage.onDuplicate(this, u);
+        transferPlayer(u);
 
         return u;
     }
@@ -1256,6 +1420,11 @@ public class EmpathyUnit extends UnitEntity{
     }
 
     void randAI(boolean attack, boolean quickSwap){
+        if(isPlayer() && !isDecoy()){
+            if(attack) playerAttackActive = false; else playerMovementActive = false;
+            playerStatus = "Pattern complete. Use again or select another ability.";
+            return;
+        }
         if(attack){
             randAI.clear();
             for(EmpathyAI ai : attackAIs){
@@ -1292,10 +1461,11 @@ public class EmpathyUnit extends UnitEntity{
     }
 
     void switchAI(EmpathyAI ai){
-        if(ai.attack && activeMovement instanceof TeleSwapMove tp && !tp.swaping){
+        if(!isPlayer() && ai.attack && activeMovement instanceof TeleSwapMove tp && !tp.swaping){
             if(tp.onSwap()) return;
         }
 
+        if(isPlayer()){ if(ai.attack) playerAttackActive = true; else playerMovementActive = true; }
         if(ai.attack){
             updateUsages(true);
             attackAIChanges++;

@@ -72,7 +72,7 @@ public class ShrapnelEntity extends DrawEntity implements Poolable{
 
         time += Time.delta;
 
-        //Teamc teamc = Units.closestTarget(team, x, y, 8f, Flyingc::isGrounded);
+        //Teamc teamc = Units.closestTarget(team, x, y, 8f, Unit::isGrounded);
         if(damage > 0){
             Utils.scanEnemies(team, x, y, hitSize / 1.5f, true, true, t -> {
                 if(collided.add(t.id())){

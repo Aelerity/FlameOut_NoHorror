@@ -372,7 +372,7 @@ public class GraphicUtils{
 
         Rand r = Utils.rand, r2 = Utils.rand2;
         r.setSeed(seed);
-        Color outC = FlamePal.blood;
+        Color outC = Pal.darkerMetal;
 
         Draw.color(Color.white, outC, deathTime2);
 
