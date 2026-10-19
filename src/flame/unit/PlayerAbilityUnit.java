@@ -1,6 +1,6 @@
 package flame.unit;
 
-/** Abilities are invoked on the possessed entity; its Player controller stays in place. */
+/** Internal original-pattern hooks; automatic combat keeps the Player controller in place. */
 public interface PlayerAbilityUnit{
     String[] playerAbilityNames();
     int selectedPlayerAbility();

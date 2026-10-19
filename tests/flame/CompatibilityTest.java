@@ -80,6 +80,8 @@ public class CompatibilityTest{
                     !name.contains("explosion-organic"), "horror asset bundled: " + name);
             }
             require(jar.getEntry("mod.json") != null, "missing mod metadata");
+            require(jar.getEntry("flame/ui/PlayerAbilityUI.class") == null, "manual attack picker is still bundled");
+            require(jar.getEntry("bundles/bundle.properties") == null, "obsolete manual ability bindings are still bundled");
         }
     }
 

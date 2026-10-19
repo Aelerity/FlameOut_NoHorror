@@ -19,6 +19,7 @@ public class ApathySentryUnit extends UnitEntity implements PlayerAbilityUnit{
     @Override public int selectedPlayerAbility(){ return playerAbility; }
     @Override public void selectPlayerAbility(int index){ if(index >= 0 && index < 2) playerAbility = index; }
     @Override public String playerAbilityStatus(){ return playerStatus; }
+    @Override public boolean nativePlayerWeapon(){ return manualHealTime <= 0f; }
     @Override public boolean usePlayerAbility(){
         if(!isPlayer()) return false;
         if(playerAbility == 0){ playerStatus = "Hold primary fire to shoot the laser."; return true; }
@@ -57,6 +58,14 @@ public class ApathySentryUnit extends UnitEntity implements PlayerAbilityUnit{
         super.update();
         
         if(isPlayer()){
+            if(isShooting && manualHealTime <= 0f){
+                ApathyIUnit ally = PlayerTargets.friendlyApathy(this);
+                if(ally == null && owner != null && owner.isValid() && owner.team == team) ally = owner;
+                if(ally != null && ally.health < ally.maxHealth){
+                    playerAbility = 1;
+                    usePlayerAbility();
+                }
+            }
             if(manualHealTime > 0f){
                 if(manualHealTarget == null || !manualHealTarget.isValid() || manualHealTarget.team != team){ cancelPlayerAbility(); }
                 else{

@@ -12,7 +12,7 @@ public class PlayerTargets{
 
     public static void captureCursor(Unit unit){
         // Native aim is clamped to a weapon's minimum range; ability targeting needs the raw cursor.
-        // Keep the last world position while the player clicks the ability panel.
+        // Keep the last world position while the pointer is over the normal game HUD.
         if(!Vars.headless && Vars.player != null && Vars.player.unit() == unit &&
             Core.scene != null && !Core.scene.hasMouse() && !Core.scene.hasDialog()){
             Vec2 point = Core.input.mouseWorld();

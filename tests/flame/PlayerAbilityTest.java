@@ -15,7 +15,7 @@ import java.lang.reflect.*;
 
 import static mindustry.Vars.*;
 
-/** Exercises the original pattern implementations through the same API used by the HUD. */
+/** Exercises original pattern primitives and native-input automatic combat on possessed units. */
 public class PlayerAbilityTest{
     private static ClassLoader loader;
     private static Method damageUpdate, damageReset;
@@ -34,6 +34,7 @@ public class PlayerAbilityTest{
         volley();
         empathyPatterns();
         finisher();
+        automaticCombat();
         Log.info("PASS: @ full player-ability scenarios", scenarios);
     }
 
@@ -196,7 +197,7 @@ public class PlayerAbilityTest{
             Unit enemy = target(unit);
             String[] abilities = names(unit);
             int index = java.util.Arrays.asList(abilities).indexOf("Attack: " + pattern);
-            require(index > 0, "original attack absent from selector: " + pattern);
+            require(index > 0, "original attack absent from pattern registry: " + pattern);
             if(pattern.equals("Ricochet")){
                 UnitTypes.dagger.weapons.first().bullet.create(enemy, enemy.team, unit.x + 80f, unit.y, 90f);
                 Groups.bullet.updatePhysics();
@@ -287,6 +288,116 @@ public class PlayerAbilityTest{
         call(unit, "cancelPlayerAbility");
         require(!(boolean)field(unit, "playerFinisher"), "finisher cancellation failed");
         scenarios++;
+    }
+
+    /** No selectors, ability activation calls or custom key presses in these scenarios. */
+    private static void automaticCombat() throws Exception{
+        Unit apathy = possess("apathy");
+        Unit enemy = target(apathy);
+        ObjectSet<Object> forms = new ObjectSet<>();
+        for(int i = 0; i < 2200; i++){
+            if(!enemy.isAdded()) enemy = target(apathy);
+            apathy.controlWeapons(true, true);
+            tick(apathy, 1);
+            forms.add(field(apathy, "current"));
+        }
+        require(forms.size >= 2, "held primary fire never switched Apathy forms");
+        require(createdBullets.size > 0, "automatic Apathy produced no original attack");
+        require(apathy.dst(400f, 400f) < 1f, "automatic Apathy took over movement");
+        apathy.controlWeapons(false, false);
+        tick(apathy, 1);
+        require((boolean)call(apathy, "nativePlayerWeapon") && !(boolean)field(apathy, "playerAutomatic"), "releasing fire did not stop automatic Apathy beam");
+        scenarios++;
+        Log.info("PASS: held primary fire automatically switches Apathy forms; release stops beam");
+
+        Unit empathy = possess("empathy");
+        enemy = target(empathy);
+        ObjectSet<Class<?>> patterns = new ObjectSet<>();
+        for(int i = 0; i < 8000 && patterns.size < 3; i++){
+            if(!enemy.isAdded()) enemy = target(empathy);
+            enemy.set(empathy.x + 240f, empathy.y);
+            player.mouseX = enemy.x;
+            player.mouseY = enemy.y;
+            empathy.controlWeapons(true, true);
+            tick(empathy, 1);
+            if((boolean)field(empathy, "playerAttackActive")) patterns.add(field(empathy, "activeAttack").getClass());
+        }
+        require(patterns.size >= 3, "held primary fire did not cycle Empathy's original patterns: " + patterns);
+        require(createdBullets.size > 0 || createdEntities.size > 0 || !enemy.isAdded() || enemy.health < enemy.maxHealth, "automatic Empathy attacks had no gameplay effect");
+        empathy.controlWeapons(false, false);
+        int changes = (int)field(empathy, "attackAIChanges");
+        tick(empathy, 2600);
+        require((int)field(empathy, "attackAIChanges") == changes, "Empathy started new attacks after releasing primary fire");
+        scenarios++;
+        Log.info("PASS: held primary fire automatically switches Empathy patterns; release prevents new casts");
+
+        empathy = possess("empathy");
+        enemy = target(empathy);
+        Bullet incoming = UnitTypes.dagger.weapons.first().bullet.create(enemy, enemy.team, empathy.x + 20f, empathy.y, 180f);
+        tick(empathy, 1);
+        require(incoming.team == empathy.team, "automatic defense did not parry the incoming projectile");
+        scenarios++;
+        Log.info("PASS: Empathy parries without an ability key");
+
+        Unit sentry = possess("apathy-sweep-0");
+        Unit ally = content.unit("flameout-apathy").create(Team.sharded);
+        ally.set(650f, 400f);
+        ally.add();
+        ally.health = ally.maxHealth / 2f;
+        player.mouseX = ally.x;
+        player.mouseY = ally.y;
+        for(int i = 0; i < 181; i++){
+            sentry.controlWeapons(true, true);
+            tick(sentry, 1);
+        }
+        require(ally.health > ally.maxHealth / 2f, "primary fire did not automatically repair allied Apathy");
+        sentry.controlWeapons(false, false);
+        scenarios++;
+        Log.info("PASS: primary fire contextually repairs allied Apathy without a selector");
+
+        Unit yggdrasil = possess("yggdrasil");
+        enemy = target(yggdrasil);
+        for(int i = 0; i < 300; i++){
+            yggdrasil.controlWeapons(true, true);
+            tick(yggdrasil, 1);
+        }
+        require(enemy.health < enemy.maxHealth, "Yggdrasil tentacles did no damage from standard primary fire");
+        scenarios++;
+        Log.info("PASS: Yggdrasil attacks using standard primary fire");
+
+        automaticFinisher();
+    }
+
+    private static void automaticFinisher() throws Exception{
+        Unit unit = possess("despondency");
+        Unit enemy = target(unit);
+        TextureAtlas previousAtlas = Core.atlas;
+        Core.atlas = new TextureAtlas(){
+            @Override public TextureAtlas.AtlasRegion find(String name){
+                require(name.equals("flameout-despondency-spear"), "unexpected headless texture request: " + name);
+                byte[] png = mods.getMod("flameout").root.child("sprites").child("unit").child("weapons").child("despondency-special").child("despondency-spear.png").readBytes();
+                TextureAtlas.AtlasRegion region = new TextureAtlas.AtlasRegion();
+                region.width = java.nio.ByteBuffer.wrap(png).getInt(16);
+                region.height = java.nio.ByteBuffer.wrap(png).getInt(20);
+                return region;
+            }
+        };
+        enemy.type.region = new TextureRegion();
+        enemy.type.region.width = 214;
+        enemy.type.region.height = 140;
+        boolean started = false;
+        try{
+            for(int i = 0; i < 1700; i++){
+                unit.controlWeapons(true, true);
+                tick(unit, 1);
+                started |= (boolean)field(unit, "playerFinisher");
+                if(!enemy.isAdded() || enemy.dead || enemy.health <= 0f) break;
+            }
+        }finally{ Core.atlas = previousAtlas; }
+        require(started, "Despondency did not automatically select its finisher");
+        require(!enemy.isAdded() || enemy.dead || enemy.health <= 0f, "automatic finisher did not defeat its target");
+        scenarios++;
+        Log.info("PASS: sustained primary fire automatically triggers Despondency's full finisher");
     }
 
     private static void require(boolean condition, String message){ if(!condition) throw new AssertionError(message); }
