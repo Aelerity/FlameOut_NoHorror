@@ -14,12 +14,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Build and test against Mindustry v160.7
+      - name: Build on v160.5 and test the same JAR on v160.5 and v160.7
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon build
       - uses: actions/upload-artifact@v4
         with:
-          name: FlameOut_NoHorror-v160.7
+          name: FlameOut_NoHorror-v160.5-v160.7
           path: build/libs/FlameOut_NoHorror.jar
           if-no-files-found: error

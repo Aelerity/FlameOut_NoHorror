@@ -3,8 +3,8 @@
     "displayName": "Flame Out: No Horror",
     "author": "EoD",
     "description": "All five selectable combat units with their full original player-usable ability sets. No horror sequences, hidden encounters, blood, gore, or horror audio. Desktop single-player sandbox mod.",
-    "version": "v1.3.0",
-    "minGameVersion": "160.7",
+    "version": "v1.3.1",
+    "minGameVersion": "160.5",
     "main": "flame.FlameOut",
     "java": true,
     "repo": "Aelerity/FlameOut_NoHorror"

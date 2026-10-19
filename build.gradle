@@ -2,7 +2,7 @@ plugins{
     id 'java'
 }
 
-version = '1.3.0'
+version = '1.3.1'
 sourceCompatibility = JavaVersion.VERSION_17
 targetCompatibility = JavaVersion.VERSION_17
 
@@ -11,27 +11,40 @@ sourceSets{
     test.java.srcDirs = ['tests']
 }
 
-// Compile and test against the actual released game, not mismatched Arc snapshots.
+// Compile against the oldest verified game; test that same mod on both releases.
 // The game is compile/test-only and must never be bundled into the mod.
+def gameVersion = '160.5'
+def newerGameVersion = '160.7'
+def gameHashes = [
+    '160.5': '0bd327c6c3d551e7e8fdab7b695517f809baacca3b1f5cb1c1a8dd74836620e0',
+    '160.7': 'f7b899a4038b95b14a824d5f8993984f79d73baa3254c385b6538327f9c0befd'
+]
 def gameJar = providers.gradleProperty('mindustryJar').map { file(it) }
-    .orElse(layout.buildDirectory.file('dependencies/server-v160.7.jar').map { it.asFile })
+    .orElse(layout.buildDirectory.file("dependencies/server-v${gameVersion}.jar").map { it.asFile })
+def newerGameJar = providers.gradleProperty('newerMindustryJar').map { file(it) }
+    .orElse(layout.buildDirectory.file("dependencies/server-v${newerGameVersion}.jar").map { it.asFile })
 
-tasks.register('downloadMindustry'){
-    outputs.file(gameJar)
+def registerGameDownload = { String taskName, String targetVersion, targetJar ->
+tasks.register(taskName){
+    inputs.property('mindustryVersion', targetVersion)
+    outputs.file(targetJar)
     doLast{
-        def target = gameJar.get()
+        def target = targetJar.get()
         if(!target.exists()){
             target.parentFile.mkdirs()
-            new URL('https://github.com/Anuken/Mindustry/releases/download/v160.7/server-release.jar').withInputStream { input ->
+            new URL("https://github.com/Anuken/Mindustry/releases/download/v${targetVersion}/server-release.jar").withInputStream { input ->
                 target.withOutputStream { output -> output << input }
             }
         }
         def actual = java.security.MessageDigest.getInstance('SHA-256').digest(target.bytes).encodeHex().toString()
-        if(actual != 'f7b899a4038b95b14a824d5f8993984f79d73baa3254c385b6538327f9c0befd'){
-            throw new GradleException('Mindustry v160.7 dependency checksum mismatch: ' + actual)
+        if(actual != gameHashes[targetVersion]){
+            throw new GradleException("Mindustry v${targetVersion} dependency checksum mismatch: " + actual)
         }
     }
 }
+}
+registerGameDownload('downloadMindustry', gameVersion, gameJar)
+registerGameDownload('downloadNewerMindustry', newerGameVersion, newerGameJar)
 
 dependencies{
     compileOnly files(gameJar).builtBy('downloadMindustry')
@@ -59,11 +72,23 @@ tasks.register('verifyMod', JavaExec){
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'flame.CompatibilityTest'
     systemProperty 'mod.jar', tasks.jar.archiveFile.get().asFile.absolutePath
+    systemProperty 'mindustry.version', gameVersion
     workingDir = layout.buildDirectory.dir('verification').get().asFile
     doFirst{ workingDir.mkdirs() }
 }
 
-check.dependsOn verifyMod
+// Test the exact same compiled JAR on the newer game, without recompiling it.
+tasks.register('verifyNewerMod', JavaExec){
+    dependsOn testClasses, jar, downloadNewerMindustry
+    classpath = files(sourceSets.test.output, newerGameJar)
+    mainClass = 'flame.CompatibilityTest'
+    systemProperty 'mod.jar', tasks.jar.archiveFile.get().asFile.absolutePath
+    systemProperty 'mindustry.version', newerGameVersion
+    workingDir = layout.buildDirectory.dir('verification-newer').get().asFile
+    doFirst{ workingDir.mkdirs() }
+}
+
+check.dependsOn verifyMod, verifyNewerMod
 
 // Retain the existing desktop build command. Android is not a supported target.
 tasks.register('deploy'){

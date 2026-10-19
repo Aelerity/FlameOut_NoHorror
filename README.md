@@ -1,13 +1,13 @@
 # Flame Out: No Horror
 
-A desktop single-player sandbox fork of Flame Out for **Mindustry v8, build 160.7** (the latest stable game release checked on October 18, 2026).
+A desktop single-player sandbox fork of Flame Out for **Mindustry v8, builds 160.5 and 160.7**, including Foo's Client based on 160.5. The same compiled mod JAR is tested on both official game builds.
 
 The original units and content IDs are retained. The staged horror story, hidden image payloads, jumpscares, horror audio, blood, gore, organic death effects, cryptic descriptions, horror icon, and automatic Empathy encounter have been removed. Ordinary combat, energy effects, and the units' mechanical designs remain.
 
 ## Install and play
 
-1. With a published v1.3.0 release, use **Mods > Import from GitHub** and paste `https://github.com/Aelerity/FlameOut_NoHorror` (or `Aelerity/FlameOut_NoHorror`). When GitHub identifies the repository language as Java, Foo's Client v8 and vanilla Mindustry download the JAR from the latest published GitHub release. GitHub currently returns a blank primary language for this newly created repository, which can make direct URL import fall back to the old source ZIP. If you already have Flame Out installed, open that mod's **View Releases**, choose **v1.3.0**, and click **Add/Download** to fetch the JAR directly; otherwise use the release JAR with **Import Mod**. If that release is not yet published, build the mod below or download `FlameOut_NoHorror.jar` from a successful GitHub Actions **Build and verify** run.
-2. In Mindustry, choose **Mods > Import Mod**, select the JAR, and restart the game. Disable the original Flame Out mod first: both use the `flameout` content namespace.
+1. Download **v1.3.1** from [Releases](https://github.com/Aelerity/FlameOut_NoHorror/releases/latest) and choose its `FlameOut_NoHorror.jar` asset. In Foo's Client, use **Mods > Import Mod > Import from File** (or the available file-import option) to select the JAR. Replace the older Flame Out copy and restart; both use the `flameout` namespace.
+2. Direct **Import from GitHub** with `https://github.com/Aelerity/FlameOut_NoHorror` uses the latest release JAR only when GitHub identifies the repository's primary language as Java. That field is currently blank, so this route may fetch the old default-branch source ZIP. File import bypasses this repository-metadata issue; a View Releases button is not required.
 3. Start a **sandbox** game. In the **Units** build category, place **Flame Out Unit Factory**.
 4. Configure the factory to choose **Apathy**, **Apathy Sentry**, **Empathy**, **Yggdrasil**, or **Despondency**. Every unit is visible and unlocked; production costs no resources or power. Leave room in front of the factory for units to exit, and respect the map's unit cap.
 5. Hold the game's **unit control** key (Left Ctrl by default) and click a friendly unit. Use normal movement and aim/fire controls. Use unit control again to switch units, or press **V** (Respawn) to return to a core.
@@ -30,8 +30,9 @@ Ordinary movement remains available, with primary fire using the normal weapon w
 
 ## Compatibility warning
 
-This replacement is **v1.3.0** and declares **minGameVersion: 160.7**. If Mindustry still asks the author to add `minGameVersion: 154`, it is reading an older copy. Remove the older Flame Out entry, import the new JAR, and restart. For this Java mod, GitHub import requires an attached JAR in the latest published GitHub release; pushing source changes or merging a pull request alone does not update that download. Before the v1.3.0 release is published, use the built JAR or the artifact from the updated branch's successful workflow. Use Mindustry **v160.7**; older builds will reject this version of the mod.
+This replacement is **v1.3.1** and declares **minGameVersion: 160.5**. The previous v1.3.0 release required 160.7 and rejected Foo's Client based on 160.5. The new build compiles against official 160.5 and verifies the same packaged JAR on official 160.5 and 160.7. Older builds are not supported; simply lowering the version metadata does not establish API compatibility.
 
+If the client still says this mod requires 160.7, it is reading the previous v1.3.0 copy. If it asks the author to add `minGameVersion: 154`, it is reading the original fork. Replace that copy with the v1.3.1 JAR and restart. Other mods may declare different minimum versions.
 This remains a desktop sandbox mod. Multiplayer, Android/iOS, campaign progression, and saving/restoring the custom boss entities are not supported.
 
 ## Build and verify
@@ -44,10 +45,10 @@ Install **JDK 17**, then run:
 
 On Windows use `gradlew.bat build`. The installable output is **`build/libs/FlameOut_NoHorror.jar`**. `deploy` is an alias for the same verified desktop build.
 
-The first build downloads the official Mindustry **v160.7 server JAR** and checks its SHA-256. It is used only for compilation and headless testing; no game classes are bundled. There are no JitPack or annotation-processor dependencies. For an offline build, supply an already downloaded official JAR:
+The first build downloads the official Mindustry **v160.5 and v160.7 server JARs** and checks their SHA-256 hashes. Compilation uses 160.5; the same packaged mod is then tested on both game versions. Game JARs are used only for compilation and headless testing; no game classes are bundled. There are no JitPack or annotation-processor dependencies. For an offline build, supply both official JARs:
 
 ```sh
-./gradlew -PmindustryJar=/absolute/path/to/server-release.jar build
+./gradlew -PmindustryJar=/path/to/server-v160.5.jar -PnewerMindustryJar=/path/to/server-v160.7.jar build
 ```
 
 `check` runs a headless compatibility suite using the game's actual mod loader and the packaged JAR. It checks all five units' visibility, spawning, possession, movement, attacks, release/re-possession, all factory plans, the full original ability set (including six countdown stages and the finisher), cursor targeting, cancellation and duplication handoffs, v8 entity-group bookkeeping and copied-unit physics isolation, removal without secret encounters, legacy horror-state isolation, and absence of horror payloads or bundled game dependencies. Graphical rendering and audio need a desktop playtest; headless checks do not validate their appearance or sound.

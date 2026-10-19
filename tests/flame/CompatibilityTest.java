@@ -27,7 +27,7 @@ import java.util.jar.*;
 
 import static mindustry.Vars.*;
 
-/** Runs real v160.7 content/entity code in a private headless application. */
+/** Runs real released-game content/entity code in a private headless application. */
 public class CompatibilityTest{
     private static int checks;
     private static ClassLoader modLoader;
@@ -104,8 +104,8 @@ public class CompatibilityTest{
         content.init();
         require(!mods.hasContentErrors(), "mod content errors");
         require(mods.list().contains(m -> m.name.equals("flameout") && m.enabled()), "mod was not enabled");
-        require(Version.build == 160 && Version.revision == 7, "wrong game version");
-        require(mods.list().find(m -> m.name.equals("flameout")).meta.minGameVersion.equals("160.7"), "packaged mod still has old compatibility metadata");
+        require(Version.buildString().equals(System.getProperty("mindustry.version")), "wrong game version: " + Version.buildString());
+        require(mods.list().find(m -> m.name.equals("flameout")).meta.minGameVersion.equals("160.5"), "packaged mod still has old compatibility metadata");
         invoke("flame.unit.empathy.EmpathyDamage", "initContent");
         Time.setDeltaProvider(() -> 1f);
         Time.delta = 1f;
